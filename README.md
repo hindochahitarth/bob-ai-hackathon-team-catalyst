@@ -1,114 +1,177 @@
-# 🚀 Supply Chain Disruption Assistant & Cold Chain Monitor
+# Supply Chain Disruption Assistant & Cold Chain Monitor
+
+> **Team Catalyst** — IBM Bob AI Hackathon
 
 ---
 
-## 👥 Team
+## Team
 
-| Field | Value                                       |
-|---|---------------------------------------------|
-| **Team Name** | Team Catalyst                               |
-| **Track** | AI                                          |
+| Field | Value |
+|---|---|
+| **Team Name** | Team Catalyst |
+| **Track** | AI |
 | **Team Lead** | Hitarth Hindocha — hindochahitarth@gmail.com |
 | **Members** | Harsh Vora, Atibali Saiyed, Bhakti Moteriya |
 
 ---
 
-## 🎯 Problem Statement
+## Problem Statement
 
-Supply chain disruptions — storms, port strikes, and geopolitical crises — cascade across hundreds of active shipments in ways that are impossible to track manually, leaving logistics teams to react only after delays have already occurred. Cold-chain shipments such as vaccines and perishables are especially vulnerable: a single undetected temperature excursion can spoil cargo worth $500K or more, and today these breaches are only discovered at delivery, when it's too late to intervene.
-
----
-
-## 💡 Solution
-
-We built a system that automatically identifies which shipments are affected the moment a disruption occurs, recommends alternate routes to avoid the impacted area, and continuously monitors cold-chain temperature sensor data to flag breaches by severity in real time. IBM Bob transforms this flagged data into a clear, plain-English operations brief, so a supply chain manager instantly knows what's at risk and what to do next — instead of discovering the problem after the damage is done.
+Supply chain disruptions — storms, port strikes, and geopolitical crises — cascade across hundreds of active shipments in ways that are impossible to track manually, leaving logistics teams to react only after delays have occurred. Cold-chain shipments such as vaccines and perishables are especially vulnerable: a single undetected temperature excursion can spoil cargo worth $500K or more, and today these breaches are only discovered at delivery, when it is too late to intervene.
 
 ---
 
-## ✨ Key Features
+## Solution
 
-- **Disruption Impact Detection:** Automatically matches active disruptions (storms, strikes) against shipment routes to identify affected cargo
-- **Graph-Based Route Optimization:** Uses Dijkstra's algorithm across a route network to recommend the best alternate route or carrier when a segment is disrupted
-- **Idle Fleet Asset Identification:** Surfaces idle trucks, containers, and vessels available for redeployment to overloaded routes
-- **Cold Chain Breach Monitoring:** Analyzes real-time temperature sensor readings and classifies excursions by regulatory severity (minor/major)
-- **Shipment Tracking Portal:** Lets customers and coordinators look up any shipment by tracking number to see live status, location, and cold chain readings
-- **AI-Generated Ops Brief:** IBM Bob/watsonx.ai converts flagged data into a prioritized, natural-language summary for operations teams
+We built a system that automatically identifies which shipments are affected the moment a disruption occurs, recommends alternate routes using a **graph-based Dijkstra algorithm**, and continuously monitors cold-chain temperature sensor data to flag breaches by severity in real time. **IBM watsonx.ai (Granite)** transforms this flagged live data into a clear, plain-English AI Ops Brief so a supply chain manager instantly knows what is at risk and what to do next.
 
 ---
 
-## 🛠️ Tech Stack
+## Key Features
+
+- **Disruption Impact Detection** — matches active disruptions against shipment routes to identify affected cargo
+- **Graph-Based Route Optimization** — Dijkstra's algorithm across a logistics hub network for the best alternate route and carrier
+- **Idle Fleet Asset Identification** — surfaces idle trucks available for redeployment
+- **Cold Chain Breach Monitoring** — classifies temperature excursions by regulatory severity (minor/major)
+- **Shipment Tracking Portal** — customers look up any shipment by tracking number
+- **AI Ops Brief** — IBM watsonx.ai Granite generates a real-time natural-language operations summary from live data
+
+---
+
+## IBM watsonx.ai Integration
+
+The AI Ops Brief feature (`/ops-brief`) is powered by **IBM watsonx.ai** using the **Granite** model.
+
+### How it works
+
+```
+Live Supply-Chain Data  -->  OpsStats DTO  -->  WatsonxService
+                                                      |
+                                          IBM IAM (API key -> token)
+                                                      |
+                                     watsonx.ai /ml/v1/text/generation
+                                                      |
+                                          Granite model (Granite-3-8b-instruct)
+                                                      |
+                                          AI Ops Brief  -->  Ops Manager
+```
+
+### Setup (watsonx.ai credentials)
+
+**Step 1 — Create a free IBM Cloud account**
+1. Go to https://cloud.ibm.com/registration
+2. Sign up with your email and verify
+3. Log in to IBM Cloud
+
+**Step 2 — Enable Watson Machine Learning**
+1. In IBM Cloud, search for **"Watson Machine Learning"**
+2. Select the **Lite (free)** plan and create the service
+3. This gives you access to watsonx.ai
+
+**Step 3 — Get your API key**
+1. IBM Cloud top right: **Manage > Access (IAM) > API keys**
+2. Click **Create an IBM Cloud API key**
+3. Copy the key immediately (shown only once)
+
+**Step 4 — Get your Project ID**
+1. Go to https://dataplatform.cloud.ibm.com
+2. Open or create a watsonx.ai project
+3. Go to **Manage** tab > copy the **Project ID**
+
+**Step 5 — Set environment variables**
+
+```bash
+# Windows PowerShell
+$env:WATSONX_API_KEY     = "your-ibm-cloud-api-key"
+$env:WATSONX_PROJECT_ID  = "your-watsonx-project-id"
+$env:WATSONX_URL         = "https://us-south.ml.cloud.ibm.com"
+$env:WATSONX_MODEL_ID    = "ibm/granite-3-8b-instruct"
+```
+
+Or set them in IntelliJ IDEA:
+`Run > Edit Configurations > Environment Variables`
+
+> The app works without these credentials — it falls back to a system-generated brief from live data with an "AI service unavailable" notice. No crashes.
+
+---
+
+## Tech Stack
 
 | Category | Technologies |
 |---|---|
-| **Languages** | Java |
-| **Frameworks** | Spring Boot, Spring Data JPA, Thymeleaf |
-| **IBM Technologies** | IBM Bob, watsonx.ai |
-| **Databases** | H2 (in-memory) |
-| **Other** | Maven, GitHub Actions |
+| **Languages** | Java 17 |
+| **Frameworks** | Spring Boot 3.3, Spring Data JPA, Thymeleaf, Spring WebFlux (WebClient) |
+| **IBM Technologies** | IBM watsonx.ai, IBM Granite (granite-3-8b-instruct), IBM IAM |
+| **Databases** | H2 (in-memory, auto-seeded) |
+| **Algorithms** | Dijkstra shortest path (custom graph) |
+| **Other** | Maven, Lombok |
 
 ---
 
-## 📁 Repository Structure
-
-```
-├── src/                  # All source code
-├── docs/                 # Written documentation
-│   ├── problem-statement.md
-│   ├── solution-overview.md
-│   ├── architecture.md
-│   └── setup-guide.md
-├── demo/                 # Demo artifacts
-│   ├── screenshots/      # App screenshots
-│   └── demo-video-link.txt  # Link to demo video
-├── presentation/         # Slide deck
-└── submission.yaml       # Structured submission metadata
-```
-
----
-
-## ⚡ How to Run
-
-> **Copy these exact steps from your [`docs/setup-guide.md`](docs/setup-guide.md)**
+## How to Run
 
 ```bash
 # 1. Clone the repo
 git clone https://github.com/hindochahitarth/bob-ai-hackathon-team-catalyst
-cd bob-ai-hackathon-team-catalyst
+cd bob-ai-hackathon-team-catalyst/src/backend/supplychain
 
-# 2. Install dependencies
-cd src/backend
-mvn clean install
+# 2. (Optional) Set watsonx.ai credentials for live AI brief
+# Windows PowerShell:
+$env:WATSONX_API_KEY    = "your-key"
+$env:WATSONX_PROJECT_ID = "your-project-id"
+$env:WATSONX_MODEL_ID   = "ibm/granite-3-8b-instruct"
 
-# 3. Configure environment
-cp .env.example .env
-# Edit .env with your watsonx.ai / IBM Bob API credentials
-
-# 4. Run the project
-mvn spring-boot:run
+# 3. Run
+.\mvnw.cmd spring-boot:run
 ```
 
-The app will be available at `http://localhost:8080`
+App runs at: **http://localhost:8080**
+
+> No external database setup needed — H2 auto-creates and seeds demo data on startup.
 
 ---
 
-## 🖥️ Demo
+## Repository Structure
+
+```
+bob-ai-hackathon-team-catalyst/
+├── src/backend/supplychain/       # Spring Boot application
+│   ├── src/main/java/             # Java source
+│   │   ├── controller/            # MVC controllers
+│   │   ├── service/               # Business logic
+│   │   │   ├── WatsonxService.java        # IBM watsonx.ai integration
+│   │   │   ├── RouteOptimizationService.java  # Dijkstra algorithm
+│   │   │   ├── DisruptionService.java
+│   │   │   └── ColdChainService.java
+│   │   └── model/                 # JPA entities + DTOs
+│   └── src/main/resources/
+│       ├── templates/             # Thymeleaf HTML pages
+│       └── application.properties # Config (watsonx env vars)
+├── docs/                          # Setup guide, architecture
+├── demo/                          # Screenshots, video link
+└── submission.yaml                # Hackathon submission metadata
+```
+
+---
+
+## Demo
 
 | Artifact | Link |
 |---|---|
-| 📹 Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
-| 🌐 Live Demo | [See demo/live-demo-url.txt](demo/live-demo-url.txt) |
-| 🖼️ Screenshots | [See demo/screenshots/](demo/screenshots/) |
-| 📊 Presentation | [See presentation/slides.pdf](presentation/) |
+| Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
+| Screenshots | [See demo/screenshots/](demo/screenshots/) |
+| Presentation | [See presentation/](presentation/) |
 
 ---
 
-## ⚠️ Known Limitations
+## Known Limitations
 
-- Uses an in-memory H2 database with seeded sample data rather than live real-world shipment or sensor feeds
-- The route optimization model currently weighs routes by distance only and does not yet factor in cost, carrier reliability, or real-time traffic
-- Not yet deployed to a live environment — demo video shows the app running locally
+- Uses an in-memory H2 database with seeded sample data rather than live shipment/sensor feeds
+- Route optimization weighs paths by distance only (no real-time cost/traffic)
+- Not deployed to a live environment — demo shows app running locally
 
 ---
 
-## 🏅 What We're Most Proud Of
-The IBM Bob integration is genuinely load-bearing: rather than just displaying raw flagged data, Bob synthesizes disruption impacts, idle fleet data, and cold-chain breach severities into a single prioritized action brief, mirroring how a real operations manager would want to triage a crisis in seconds rather than sifting through tables. We also went beyond the base requirements by implementing a real graph-based optimization model for rerouting and adding a customer-facing tracking portal to make the system feel like a complete product.
+## What We Are Most Proud Of
+
+The IBM watsonx.ai integration is genuinely load-bearing: it synthesizes disruption impacts, idle fleet data, and cold-chain breach severities from live application data into a single prioritized AI brief. We also implemented a real Dijkstra graph algorithm across an Indian logistics hub network for rerouting, rather than simple rule matching, and added a customer-facing tracking portal to make the system feel like a complete product.

@@ -34,13 +34,15 @@ submission:
 
   solution_summary: >                  # REQUIRED — 1-3 sentences. What did you build?
     We built a system that automatically identifies which shipments are
-        affected by an active disruption, recommends alternate routes or
-        carriers using a graph-based shortest-path optimization model, surfaces
-        idle fleet assets available for redeployment, monitors cold chain IoT
-        sensor logs to detect and classify temperature excursions by regulatory
-        severity before delivery, and gives customers a live shipment tracking
-        portal. IBM Bob converts all flagged data into a single prioritized
-        operations brief.
+        affected by an active disruption, recommends alternate routes using a
+        graph-based Dijkstra shortest-path algorithm, surfaces idle fleet
+        assets for redeployment, monitors cold chain IoT sensor logs to detect
+        and classify temperature excursions by regulatory severity, and gives
+        customers a live shipment tracking portal. IBM watsonx.ai (Granite
+        granite-3-8b-instruct) generates a real-time natural-language
+        operations brief from live supply-chain statistics via the
+        /ml/v1/text/generation API, with graceful fallback if AI is
+        unavailable.
 
   key_features:                        # REQUIRED — List 3 to 5 specific features you implemented
     - "Automatic disruption-to-shipment impact matching"                               # e.g., "Real-time pipeline anomaly detection using watsonx.ai"
@@ -51,11 +53,17 @@ submission:
     - "AI-generated natural language operations brief via IBM Bob"
 
   tech_stack:
-    languages: ["Java"]                      # REQUIRED — e.g., ["Python", "TypeScript"]
-    frameworks: ["Spring Boot", "Spring Data JPA", "Thymeleaf"]                     # e.g., ["FastAPI", "React"]
-    ibm_technologies: ["IBM Bob", "watsonx.ai"]               # e.g., ["watsonx.ai", "IBM Bob", "IBM Cloud Functions"]
-    databases: ["H2"]                      # e.g., ["PostgreSQL", "Redis"]
-    other: ["Maven", "GitHub Actions"]                          # e.g., ["Docker", "GitHub Actions", "Slack API"]
+    languages: ["Java 17"]                      # REQUIRED
+    frameworks: ["Spring Boot 3.3", "Spring Data JPA", "Thymeleaf", "Spring WebFlux (WebClient)"]  # HTTP client for watsonx.ai
+    ibm_technologies:
+      - "IBM watsonx.ai"
+      - "IBM Granite (ibm/granite-3-8b-instruct)"
+      - "IBM Cloud IAM (API key authentication)"
+    ibm_watsonx_model: "ibm/granite-3-8b-instruct"
+    ibm_watsonx_api: "POST /ml/v1/text/generation?version=2023-05-29"
+    databases: ["H2 (in-memory, auto-seeded)"]  # No setup required
+    algorithms: ["Dijkstra shortest path (custom logistics graph)"]
+    other: ["Maven", "Lombok"]
 
   what_we_are_most_proud_of: >         # Optional but recommended — guides judges to your best work
     The IBM Bob integration is genuinely load-bearing, not decorative — it
@@ -70,9 +78,11 @@ submission:
     Uses an in-memory H2 database with seeded sample data rather than live
     real-world shipment or sensor feeds. The route optimization model
     currently weighs routes by distance only and does not yet factor in
-    cost, carrier reliability, or real-time traffic data. The application is
-    not deployed to a live environment; the demo video shows it running
-    locally.
+    cost, carrier reliability, or real-time traffic data. watsonx.ai
+    requires WATSONX_API_KEY and WATSONX_PROJECT_ID environment variables;
+    without them the app falls back to a system-generated brief from live
+    data (no crash). The application is not deployed to a live environment;
+    the demo video shows it running locally.
 # =============================================================================
 # ARTIFACT LOCATIONS
 # These paths are relative to the repo root. Only change if you moved files.
