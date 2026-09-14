@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Dashboard — Supply Chain Assistant</title>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav th:replace="~{fragments/navbar :: navbar('dashboard')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">Operations Dashboard</h1>
+        <p class="page-subtitle">Live supply chain overview — updated in real time</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary btn-sm">⬇ Export</button>
+        <button class="btn btn-primary btn-sm">＋ New Shipment</button>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stat-grid stagger">
+
+      <div class="stat-card stat-card--info">
+        <div class="stat-card__icon">📦</div>
+        <div class="stat-card__value">142</div>
+        <div class="stat-card__label">Active Shipments</div>
+        <span class="stat-card__delta stat-card__delta--up">▲ 8% this week</span>
+      </div>
+
+      <div class="stat-card stat-card--warning">
+        <div class="stat-card__icon">⚠️</div>
+        <div class="stat-card__value">5</div>
+        <div class="stat-card__label">Active Disruptions</div>
+        <span class="stat-card__delta stat-card__delta--down">▼ 2 resolved today</span>
+      </div>
+
+      <div class="stat-card stat-card--danger">
+        <div class="stat-card__icon">🚛</div>
+        <div class="stat-card__value">17</div>
+        <div class="stat-card__label">Idle Fleet Assets</div>
+        <span class="stat-card__delta stat-card__delta--up">▲ 3 new idle</span>
+      </div>
+
+      <div class="stat-card stat-card--success">
+        <div class="stat-card__icon">❄️</div>
+        <div class="stat-card__value">98%</div>
+        <div class="stat-card__label">Cold Chain Compliance</div>
+        <span class="stat-card__delta stat-card__delta--up">▲ On target</span>
+      </div>
+
+    </div>
+
+    <!-- Recent Shipments Table -->
+    <div class="card mb-8">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Recent Shipments</div>
+          <div class="card__subtitle">Last 5 active tracking entries</div>
+        </div>
+        <a href="/track" class="btn btn-secondary btn-sm">View all →</a>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tracking #</th>
+              <th>Cargo Type</th>
+              <th>Route</th>
+              <th>Cold Chain</th>
+              <th>Location</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="font-mono">TRK-00421</td>
+              <td>Pharmaceuticals</td>
+              <td>Mumbai → Delhi</td>
+              <td><span class="badge badge-info">Yes</span></td>
+              <td>Surat Hub</td>
+              <td><span class="badge badge-success">In Transit</span></td>
+            </tr>
+            <tr>
+              <td class="font-mono">TRK-00398</td>
+              <td>Electronics</td>
+              <td>Chennai → Pune</td>
+              <td><span class="badge badge-neutral">No</span></td>
+              <td>Hyderabad</td>
+              <td><span class="badge badge-warning">Delayed</span></td>
+            </tr>
+            <tr>
+              <td class="font-mono">TRK-00375</td>
+              <td>Perishables</td>
+              <td>Kolkata → Mumbai</td>
+              <td><span class="badge badge-info">Yes</span></td>
+              <td>Nagpur</td>
+              <td><span class="badge badge-success">In Transit</span></td>
+            </tr>
+            <tr>
+              <td class="font-mono">TRK-00361</td>
+              <td>Industrial Parts</td>
+              <td>Delhi → Bangalore</td>
+              <td><span class="badge badge-neutral">No</span></td>
+              <td>Bhopal</td>
+              <td><span class="badge badge-live">Critical</span></td>
+            </tr>
+            <tr>
+              <td class="font-mono">TRK-00340</td>
+              <td>FMCG</td>
+              <td>Ahmedabad → Jaipur</td>
+              <td><span class="badge badge-neutral">No</span></td>
+              <td>Jaipur Hub</td>
+              <td><span class="badge badge-success">Delivered</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-footer">
+          <span>Showing 5 of 142 shipments</span>
+          <span>Last refreshed: just now</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="grid grid-2 gap-6 mb-8">
+
+      <!-- Disruption Alerts -->
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">Disruption Alerts</div>
+          <a href="/disruptions" class="btn btn-secondary btn-sm">Details →</a>
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="alert alert-danger">
+            <span class="alert-icon">🔴</span>
+            <div class="alert-text">
+              <div class="alert-title">Port Congestion — JNPT</div>
+              Cargo clearance delays up to 48h. 12 shipments affected.
+            </div>
+          </div>
+          <div class="alert alert-warning">
+            <span class="alert-icon">🟠</span>
+            <div class="alert-text">
+              <div class="alert-title">NH-48 Road Closure</div>
+              Alternate route via SH-8 adding ~4h transit time.
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <span class="alert-icon">🔵</span>
+            <div class="alert-text">
+              <div class="alert-title">Weather Advisory — West Bengal</div>
+              Heavy rain forecast for next 3 days. Monitor cold-chain loads.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fleet Status -->
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">Fleet Status Snapshot</div>
+          <a href="/fleet" class="btn btn-secondary btn-sm">All assets →</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Asset ID</th>
+                <th>Type</th>
+                <th>Location</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-mono">TRK-A14</td>
+                <td>Heavy Truck</td>
+                <td>Delhi Hub</td>
+                <td><span class="badge badge-warning">Idle</span></td>
+              </tr>
+              <tr>
+                <td class="font-mono">VAN-B07</td>
+                <td>Refrigerated Van</td>
+                <td>Mumbai Cold Store</td>
+                <td><span class="badge badge-success">Active</span></td>
+              </tr>
+              <tr>
+                <td class="font-mono">TRK-C22</td>
+                <td>Medium Truck</td>
+                <td>Chennai Port</td>
+                <td><span class="badge badge-danger">Maintenance</span></td>
+              </tr>
+              <tr>
+                <td class="font-mono">DRN-D03</td>
+                <td>Drone</td>
+                <td>Pune Depot</td>
+                <td><span class="badge badge-warning">Idle</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
