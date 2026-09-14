@@ -1,47 +1,83 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>All Shipments</title>
+  <title>All Shipments — Supply Chain Assistant</title>
 </head>
 <body>
-<nav th:replace="~{fragments/navbar :: navbar(null)}"></nav>
-<div class="page-wrapper"><div class="container">
-  <div class="page-header flex items-center justify-between">
-    <div>
-      <h1 class="page-title">All Shipments</h1>
-      <p class="page-subtitle">Complete list of all shipments in the system</p>
+
+<nav th:replace="~{fragments/navbar :: navbar('track')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">All Shipments</h1>
+        <p class="page-subtitle">Complete overview of active and in-transit shipments across routes</p>
+      </div>
+      <div style="display:flex;gap:var(--sp-3);">
+        <a href="/track" class="btn btn-primary btn-sm">Track by Number →</a>
+        <a href="/dashboard" class="btn btn-secondary btn-sm">Dashboard</a>
+      </div>
     </div>
-    <div style="display:flex;gap:var(--sp-3);">
-      <a href="/track" class="btn btn-secondary btn-sm">Search by Tracking #</a>
-      <a href="/dashboard" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+
+    <div class="card animate-fade-in-up">
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tracking #</th>
+              <th>Cargo Type</th>
+              <th>Route</th>
+              <th>Cold Chain</th>
+              <th>Current Location</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="s : ${shipments}">
+              <td>
+                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}"
+                   th:text="${s.trackingNumber}"
+                   style="color:var(--accent);font-weight:600;font-family:var(--font-mono);text-decoration:none;">TRK-0000</a>
+              </td>
+              <td th:text="${s.cargoType}">-</td>
+              <td>
+                <span th:if="${s.route != null}" th:text="${s.route.origin + ' → ' + s.route.destination}">-</span>
+                <span th:unless="${s.route != null}" style="color:var(--text-muted);">Unassigned</span>
+              </td>
+              <td>
+                <span th:if="${s.coldChain}" class="badge badge-info">❄️ Monitored</span>
+                <span th:unless="${s.coldChain}" class="badge badge-neutral">Standard</span>
+              </td>
+              <td>
+                <span>📍 <span th:text="${s.currentLocation}">-</span></span>
+              </td>
+              <td>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'In Transit') or #strings.equalsIgnoreCase(s.status, 'IN_TRANSIT')}"
+                      class="badge badge-success" th:text="${s.status}">In Transit</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Delayed') or #strings.equalsIgnoreCase(s.status, 'DELAYED')}"
+                      class="badge badge-warning" th:text="${s.status}">Delayed</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Critical') or #strings.equalsIgnoreCase(s.status, 'CRITICAL')}"
+                      class="badge badge-live" th:text="${s.status}">Critical</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Delivered') or #strings.equalsIgnoreCase(s.status, 'DELIVERED')}"
+                      class="badge badge-accent" th:text="${s.status}">Delivered</span>
+                <span th:if="${s.status == null or (!#strings.equalsIgnoreCase(s.status,'In Transit') and !#strings.equalsIgnoreCase(s.status,'IN_TRANSIT') and !#strings.equalsIgnoreCase(s.status,'Delayed') and !#strings.equalsIgnoreCase(s.status,'DELAYED') and !#strings.equalsIgnoreCase(s.status,'Critical') and !#strings.equalsIgnoreCase(s.status,'CRITICAL') and !#strings.equalsIgnoreCase(s.status,'Delivered') and !#strings.equalsIgnoreCase(s.status,'DELIVERED'))}"
+                      class="badge badge-neutral" th:text="${s.status}">-</span>
+              </td>
+              <td>
+                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}" class="btn btn-secondary btn-sm" style="padding:4px 10px;font-size:var(--text-xs);">Track</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:var(--sp-4) var(--sp-6);font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
+        <span>Total shipments: <strong th:text="${#lists.size(shipments)}" style="color:var(--text-primary);">0</strong></span>
+        <span>Click any tracking number to see route journey & details</span>
+      </div>
     </div>
   </div>
-  <div class="card animate-fade-in-up">
-    <div class="table-wrapper">
-      <table class="table">
-        <thead><tr>
-          <th>Tracking #</th><th>Cargo Type</th><th>Route</th>
-          <th>Cold Chain</th><th>Location</th><th>Status</th>
-        </tr></thead>
-        <tbody>
-          <tr th:each="s : ${shipments}">
-            <td><a th:href="@{/track(trackingNumber=${s.trackingNumber})}" th:text="${s.trackingNumber}" style="color:var(--accent);font-weight:600;text-decoration:none;"></a></td>
-            <td th:text="${s.cargoType}">-</td>
-            <td th:if="${s.route != null}" th:text="${s.route.origin + 
-'
- + s.route.destination}">-</td>
-            <td th:unless="${s.route != null}" style="color:var(--text-muted);">No route</td>
-            <td><span th:if="${s.coldChain}" class="badge badge-info">Yes</span><span th:unless="${s.coldChain}" class="badge" style="opacity:.5;">No</span></td>
-            <td th:text="${s.currentLocation}">-</td>
-            <td><span th:text="${s.status}" class="badge badge-success">-</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="padding:var(--sp-4) var(--sp-6);font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle);">
-      Showing <strong th:text="${#lists.size(shipments)}">0</strong> shipments
-    </div>
-  </div>
-</div></div>
+</div>
 </body>
 </html>

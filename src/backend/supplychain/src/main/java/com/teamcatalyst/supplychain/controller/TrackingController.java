@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/track")
 @RequiredArgsConstructor
 public class TrackingController {
 
@@ -22,7 +21,7 @@ public class TrackingController {
     private final ColdChainService coldChainService;
 
     /** GET /track — empty search page */
-    @GetMapping
+    @GetMapping("/track")
     public String trackPage(@RequestParam(required = false) String trackingNumber,
                             Model model) {
 
@@ -55,8 +54,8 @@ public class TrackingController {
         return "track";
     }
 
-    /** GET /shipments — full shipments list page */
-    @GetMapping("/shipments")
+    /** GET /shipments & GET /track/shipments — full shipments list page */
+    @GetMapping({"/shipments", "/track/shipments"})
     public String allShipments(Model model) {
         model.addAttribute("shipments", shipmentRepo.findAll());
         return "shipments";
