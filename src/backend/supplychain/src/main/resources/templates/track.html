@@ -186,13 +186,15 @@
       transition: all var(--duration) var(--ease);
     }
 
-    .track-step--done .track-step__dot {
+    .track-step--done .track-step__dot,
+    .track-step.done  .track-step__dot {
       background: var(--accent);
       border-color: var(--accent);
       color: #fff;
     }
 
-    .track-step--active .track-step__dot {
+    .track-step--active .track-step__dot,
+    .track-step.active  .track-step__dot {
       background: var(--success);
       border-color: var(--success);
       color: #fff;
@@ -207,15 +209,19 @@
     }
 
     .track-step--done  .track-step__label,
-    .track-step--active .track-step__label { color: var(--text-secondary); }
+    .track-step.done   .track-step__label,
+    .track-step--active .track-step__label,
+    .track-step.active  .track-step__label { color: var(--text-secondary); }
 
-    .track-step__line {
+    .track-step__line,
+    .track-step-line {
       flex: 1;
       height: 2px;
       background: var(--border);
       margin-top: -16px;
     }
-    .track-step__line--done { background: var(--accent); }
+    .track-step__line--done,
+    .track-step-line.done { background: var(--accent); }
 
     /* Not-found / idle states */
     .track-state {
@@ -444,44 +450,38 @@
         <div class="track-steps">
 
           <!-- Order Placed -->
-          <div class="track-step track-step--done">
+          <div class="track-step done">
             <div class="track-step__dot">✓</div>
             <div class="track-step__label">Order<br/>Placed</div>
           </div>
 
-          <div class="track-step__line track-step__line--done"></div>
+          <div class="track-step-line done"></div>
 
           <!-- Picked Up -->
-          <div class="track-step track-step--done">
+          <div class="track-step done">
             <div class="track-step__dot">✓</div>
             <div class="track-step__label">Picked<br/>Up</div>
           </div>
 
-          <div th:with="inTransit=${#strings.containsIgnoreCase(shipment.status,'transit')
-                                    or #strings.containsIgnoreCase(shipment.status,'delayed')
-                                    or #strings.containsIgnoreCase(shipment.status,'critical')}">
+          <!-- Connecting line Picked Up -> In Transit -->
+          <div class="track-step-line"
+               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'transit') or #strings.containsIgnoreCase(shipment.status, 'delayed') or #strings.containsIgnoreCase(shipment.status, 'critical') or #strings.containsIgnoreCase(shipment.status, 'rerouted') or #strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''"></div>
 
-            <div th:class="${inTransit} ? 'track-step__line track-step__line--done' : 'track-step__line'"></div>
-
-            <!-- In Transit -->
-            <div th:class="${inTransit and !#strings.containsIgnoreCase(shipment.status,'delivered')}
-                            ? 'track-step track-step--active'
-                            : (${#strings.containsIgnoreCase(shipment.status,'delivered')} ? 'track-step track-step--done' : 'track-step')">
-              <div class="track-step__dot"
-                   th:text="${#strings.containsIgnoreCase(shipment.status,'delivered')} ? '✓' : '→'">→</div>
-              <div class="track-step__label">In<br/>Transit</div>
-            </div>
-
+          <!-- In Transit Step -->
+          <div class="track-step"
+               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : (${#strings.containsIgnoreCase(shipment.status, 'transit') or #strings.containsIgnoreCase(shipment.status, 'delayed') or #strings.containsIgnoreCase(shipment.status, 'critical') or #strings.containsIgnoreCase(shipment.status, 'rerouted')} ? 'active' : '')">
+            <div class="track-step__dot" th:text="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? '✓' : '→'">→</div>
+            <div class="track-step__label">In<br/>Transit</div>
           </div>
 
-          <div th:class="${#strings.containsIgnoreCase(shipment.status,'delivered')}
-                          ? 'track-step__line track-step__line--done' : 'track-step__line'"></div>
+          <!-- Connecting line In Transit -> Delivered -->
+          <div class="track-step-line"
+               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''"></div>
 
-          <!-- Delivered -->
-          <div th:class="${#strings.containsIgnoreCase(shipment.status,'delivered')}
-                          ? 'track-step track-step--done' : 'track-step'">
-            <div class="track-step__dot"
-                 th:text="${#strings.containsIgnoreCase(shipment.status,'delivered')} ? '✓' : '○'">○</div>
+          <!-- Delivered Step -->
+          <div class="track-step"
+               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''">
+            <div class="track-step__dot" th:text="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? '✓' : '○'">○</div>
             <div class="track-step__label">Delivered</div>
           </div>
 
