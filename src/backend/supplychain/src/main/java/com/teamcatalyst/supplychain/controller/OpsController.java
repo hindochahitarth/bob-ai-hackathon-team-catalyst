@@ -54,6 +54,7 @@ public class OpsController {
         redirectAttrs.addFlashAttribute("briefText",   result.text());
         redirectAttrs.addFlashAttribute("generated",   true);
         redirectAttrs.addFlashAttribute("aiGenerated", result.aiGenerated());
+        redirectAttrs.addFlashAttribute("aiSource",    result.source() != null ? result.source() : "System Generated");
         redirectAttrs.addFlashAttribute("stats",       stats);
         return "redirect:/ops-brief";
     }

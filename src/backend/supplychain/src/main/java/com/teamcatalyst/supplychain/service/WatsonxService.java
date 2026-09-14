@@ -15,12 +15,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * WatsonxService - handles IBM watsonx.ai integration.
+ * WatsonxService
  *
- * 1. IBM IAM token acquisition and caching.
- * 2. Prompt construction from OpsStats.
- * 3. watsonx.ai /ml/v1/text/generation REST call.
- * 4. Graceful fallback when AI is unavailable.
+ * AI brief generation with 3-tier priority:
+ *   1. IBM watsonx.ai (cloud)  — if WATSONX_API_KEY + WATSONX_PROJECT_ID are set
+ *   2. Ollama + IBM Granite    — if Ollama is running on localhost:11434
+ *   3. System fallback brief   — always works, uses live stats
  *
  * API keys and tokens are NEVER logged.
  */
@@ -28,6 +28,7 @@ import java.util.Map;
 @Service
 public class WatsonxService {
 
+    // ── watsonx.ai config ─────────────────────────────────────────────────────
     @Value("${watsonx.api-key:}")
     private String apiKey;
 
@@ -38,11 +39,19 @@ public class WatsonxService {
     private String watsonxUrl;
 
     @Value("${watsonx.model-id:ibm/granite-3-8b-instruct}")
-    private String modelId;
+    private String watsonxModelId;
+
+    // ── Ollama config ─────────────────────────────────────────────────────────
+    @Value("${ollama.url:http://localhost:11434}")
+    private String ollamaUrl;
+
+    @Value("${ollama.model:granite3.1-dense:2b}")
+    private String ollamaModel;
 
     private static final String IAM_URL = "https://iam.cloud.ibm.com/identity/token";
     private static final long TOKEN_REFRESH_BUFFER_SECONDS = 300;
 
+    // ── IAM token cache ───────────────────────────────────────────────────────
     private String cachedToken;
     private Instant tokenExpiresAt;
 
@@ -54,37 +63,57 @@ public class WatsonxService {
         this.objectMapper = objectMapper;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Public API
+    // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Generate an AI Ops Brief using:
+     *   1. watsonx.ai  (if credentials configured)
+     *   2. Ollama/Granite (if running locally)
+     *   3. System fallback from live stats
+     */
     public BriefResult generateOpsBrief(OpsStats stats) {
-        if (!isConfigured()) {
-            log.warn("watsonx.ai not configured (missing API key or project ID); using fallback Ops Brief");
-            return BriefResult.fallback(buildFallbackBrief(stats));
+
+        // ── Tier 1: IBM watsonx.ai ────────────────────────────────────────────
+        if (isWatsonxConfigured()) {
+            try {
+                log.info("Generating AI Ops Brief via IBM watsonx.ai (model: {})", watsonxModelId);
+                String token = getOrRefreshToken();
+                String aiText = callWatsonxGeneration(token, buildPrompt(stats));
+                log.info("watsonx.ai Ops Brief generated successfully");
+                return BriefResult.ai(aiText, "IBM watsonx.ai \u2022 " + watsonxModelId);
+            } catch (Exception ex) {
+                log.warn("watsonx.ai failed: {}. Trying Ollama...", ex.getMessage());
+            }
         }
-        try {
-            log.info("Generating AI Ops Brief via watsonx.ai (model: {})", modelId);
-            String token = getOrRefreshToken();
-            String prompt = buildPrompt(stats);
-            String aiText = callWatsonxGeneration(token, prompt);
-            log.info("watsonx.ai Ops Brief generated successfully");
-            return BriefResult.ai(aiText);
-        } catch (Exception ex) {
-            log.warn("watsonx.ai unavailable; using fallback Ops Brief. Reason: {}", ex.getMessage());
-            return BriefResult.fallback(buildFallbackBrief(stats));
+
+        // ── Tier 2: Ollama + IBM Granite (local) ──────────────────────────────
+        if (isOllamaRunning()) {
+            try {
+                log.info("Generating AI Ops Brief via Ollama (model: {})", ollamaModel);
+                String aiText = callOllama(buildPrompt(stats));
+                log.info("Ollama Ops Brief generated successfully");
+                return BriefResult.ai(aiText, "IBM Granite (local) \u2022 " + ollamaModel);
+            } catch (Exception ex) {
+                log.warn("Ollama failed: {}. Using system fallback.", ex.getMessage());
+            }
         }
+
+        // ── Tier 3: System fallback ───────────────────────────────────────────
+        log.warn("No AI available; using system-generated fallback Ops Brief");
+        return BriefResult.fallback(buildFallbackBrief(stats));
     }
 
-    // ── IAM Authentication ────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tier 1 — IBM watsonx.ai
+    // ─────────────────────────────────────────────────────────────────────────
 
     private String getOrRefreshToken() throws Exception {
         if (cachedToken != null && tokenExpiresAt != null
                 && Instant.now().isBefore(tokenExpiresAt.minusSeconds(TOKEN_REFRESH_BUFFER_SECONDS))) {
             return cachedToken;
         }
-        return fetchNewToken();
-    }
-
-    private String fetchNewToken() throws Exception {
         log.info("Requesting new IBM IAM access token");
         String body = "grant_type=urn%3Aibm%3Aparams%3Aoauth%3Agrant-type%3Aapikey&apikey=" + apiKey;
         String responseBody = webClient.post()
@@ -94,11 +123,8 @@ public class WatsonxService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
-
         JsonNode json = objectMapper.readTree(responseBody);
-        if (!json.has("access_token")) {
-            throw new IllegalStateException("IAM response missing access_token");
-        }
+        if (!json.has("access_token")) throw new IllegalStateException("IAM response missing access_token");
         cachedToken = json.get("access_token").asText();
         long expiresIn = json.has("expires_in") ? json.get("expires_in").asLong() : 3600L;
         tokenExpiresAt = Instant.now().plusSeconds(expiresIn);
@@ -106,7 +132,99 @@ public class WatsonxService {
         return cachedToken;
     }
 
-    // ── Prompt Construction ───────────────────────────────────────────────────
+    private String callWatsonxGeneration(String token, String prompt) throws Exception {
+        String url = watsonxUrl + "/ml/v1/text/generation?version=2023-05-29";
+        Map<String, Object> requestBody = Map.of(
+                "model_id", watsonxModelId,
+                "project_id", projectId,
+                "input", prompt,
+                "parameters", Map.of(
+                        "decoding_method", "greedy",
+                        "max_new_tokens", 512,
+                        "min_new_tokens", 50,
+                        "repetition_penalty", 1.1
+                )
+        );
+        try {
+            String responseBody = webClient.post()
+                    .uri(url)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return extractWatsonxText(responseBody);
+        } catch (WebClientResponseException ex) {
+            throw new RuntimeException("watsonx.ai HTTP " + ex.getStatusCode());
+        }
+    }
+
+    private String extractWatsonxText(String body) throws Exception {
+        if (body == null || body.isBlank()) throw new IllegalStateException("Empty watsonx.ai response");
+        JsonNode root = objectMapper.readTree(body);
+        JsonNode results = root.path("results");
+        if (results.isArray() && results.size() > 0) {
+            JsonNode text = results.get(0).path("generated_text");
+            if (!text.isMissingNode() && !text.asText().isBlank()) return text.asText().trim();
+        }
+        throw new IllegalStateException("No generated_text in watsonx.ai response");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tier 2 — Ollama (IBM Granite local)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private boolean isOllamaRunning() {
+        try {
+            webClient.get()
+                    .uri(ollamaUrl + "/api/tags")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String callOllama(String prompt) throws Exception {
+        Map<String, Object> requestBody = Map.of(
+                "model", ollamaModel,
+                "prompt", prompt,
+                "stream", false,
+                "options", Map.of(
+                        "temperature", 0.3,
+                        "num_predict", 512
+                )
+        );
+        try {
+            String responseBody = webClient.post()
+                    .uri(ollamaUrl + "/api/generate")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return extractOllamaText(responseBody);
+        } catch (WebClientResponseException ex) {
+            throw new RuntimeException("Ollama HTTP " + ex.getStatusCode());
+        }
+    }
+
+    private String extractOllamaText(String body) throws Exception {
+        if (body == null || body.isBlank()) throw new IllegalStateException("Empty Ollama response");
+        JsonNode root = objectMapper.readTree(body);
+        JsonNode response = root.path("response");
+        if (!response.isMissingNode() && !response.asText().isBlank()) {
+            return response.asText().trim();
+        }
+        throw new IllegalStateException("No response field in Ollama output");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Shared — Prompt Builder
+    // ─────────────────────────────────────────────────────────────────────────
 
     String buildPrompt(OpsStats stats) {
         StringBuilder sb = new StringBuilder();
@@ -120,110 +238,67 @@ public class WatsonxService {
         sb.append("- Idle fleet assets: ").append(stats.getIdleFleetAssets()).append("\n");
         sb.append("- Cold-chain alerts: ").append(stats.getColdChainAlerts()).append("\n");
         sb.append("- Critical cold-chain alerts: ").append(stats.getCriticalColdChainAlerts()).append("\n");
-
         List<String> majors = stats.getMajorDisruptionSummaries();
         if (majors != null && !majors.isEmpty()) {
             sb.append("\nMAJOR ACTIVE DISRUPTIONS:\n");
-            for (String d : majors) {
-                sb.append("  - ").append(d).append("\n");
-            }
+            for (String d : majors) sb.append("  - ").append(d).append("\n");
         }
-        sb.append("\nProvide a structured brief with sections:\n");
+        sb.append("\nProvide a brief with sections:\n");
         sb.append("1. Overall Situation\n2. Major Disruptions\n");
         sb.append("3. Immediate Actions\n4. Cold-Chain Risks\n5. Fleet Priorities\n\n");
-        sb.append("Keep it concise, professional, max 300 words.\nBrief:\n");
+        sb.append("Concise, professional, max 300 words.\nBrief:\n");
         return sb.toString();
     }
 
-    // ── watsonx.ai REST Call ──────────────────────────────────────────────────
-
-    private String callWatsonxGeneration(String token, String prompt) throws Exception {
-        String url = watsonxUrl + "/ml/v1/text/generation?version=2023-05-29";
-        Map<String, Object> requestBody = Map.of(
-                "model_id", modelId,
-                "project_id", projectId,
-                "input", prompt,
-                "parameters", Map.of(
-                        "decoding_method", "greedy",
-                        "max_new_tokens", 512,
-                        "min_new_tokens", 50,
-                        "repetition_penalty", 1.1
-                )
-        );
-        String responseBody;
-        try {
-            responseBody = webClient.post()
-                    .uri(url)
-                    .header("Authorization", "Bearer " + token)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-        } catch (WebClientResponseException ex) {
-            throw new RuntimeException("watsonx.ai HTTP " + ex.getStatusCode() + " error");
-        }
-        return extractGeneratedText(responseBody);
-    }
-
-    private String extractGeneratedText(String responseBody) throws Exception {
-        if (responseBody == null || responseBody.isBlank()) {
-            throw new IllegalStateException("Empty response from watsonx.ai");
-        }
-        JsonNode root = objectMapper.readTree(responseBody);
-        JsonNode results = root.path("results");
-        if (results.isArray() && results.size() > 0) {
-            JsonNode text = results.get(0).path("generated_text");
-            if (!text.isMissingNode() && !text.asText().isBlank()) {
-                return text.asText().trim();
-            }
-        }
-        throw new IllegalStateException("watsonx.ai response did not contain generated_text");
-    }
-
-    // ── Fallback Brief ────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tier 3 — System Fallback
+    // ─────────────────────────────────────────────────────────────────────────
 
     private String buildFallbackBrief(OpsStats stats) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Operations Brief — System Generated\n\n");
+        sb.append("Operations Brief \u2014 System Generated\n\n");
         sb.append(stats.getActiveShipments()).append(" active shipments are being monitored.\n");
-        if (stats.getDisruptedShipments() > 0) {
+        if (stats.getDisruptedShipments() > 0)
             sb.append(stats.getDisruptedShipments()).append(" shipments are affected by active disruptions.\n");
-        }
-        if (stats.getActiveDisruptions() > 0) {
+        if (stats.getActiveDisruptions() > 0)
             sb.append(stats.getActiveDisruptions()).append(" disruption events are currently active.\n");
-        }
-        if (stats.getIdleFleetAssets() > 0) {
+        if (stats.getIdleFleetAssets() > 0)
             sb.append(stats.getIdleFleetAssets()).append(" fleet assets are idle and available for redeployment.\n");
-        }
         if (stats.getColdChainAlerts() > 0) {
             sb.append(stats.getColdChainAlerts()).append(" cold-chain shipments require monitoring");
-            if (stats.getCriticalColdChainAlerts() > 0) {
+            if (stats.getCriticalColdChainAlerts() > 0)
                 sb.append(", including ").append(stats.getCriticalColdChainAlerts()).append(" with critical breaches");
-            }
             sb.append(".\n");
         }
         List<String> priorities = new java.util.ArrayList<>();
         if (stats.getDisruptedShipments() > 0) priorities.add("disrupted shipments");
         if (stats.getCriticalColdChainAlerts() > 0) priorities.add("critical cold-chain alerts");
         if (stats.getIdleFleetAssets() > 0) priorities.add("idle fleet redeployment");
-        if (!priorities.isEmpty()) {
+        if (!priorities.isEmpty())
             sb.append("\nImmediate priorities: review ").append(String.join(", ", priorities)).append(".");
-        }
         return sb.toString();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private boolean isConfigured() {
+    private boolean isWatsonxConfigured() {
         return apiKey != null && !apiKey.isBlank()
                 && projectId != null && !projectId.isBlank();
     }
 
-    // ── Result record ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Result record
+    // ─────────────────────────────────────────────────────────────────────────
 
-    public record BriefResult(String text, boolean aiGenerated) {
-        static BriefResult ai(String text)       { return new BriefResult(text, true);  }
-        static BriefResult fallback(String text) { return new BriefResult(text, false); }
+    /**
+     * @param text         The brief text
+     * @param aiGenerated  true = AI generated, false = system fallback
+     * @param source       e.g. "IBM watsonx.ai", "IBM Granite (local)", null for fallback
+     */
+    public record BriefResult(String text, boolean aiGenerated, String source) {
+        static BriefResult ai(String text, String source) { return new BriefResult(text, true, source); }
+        static BriefResult fallback(String text)           { return new BriefResult(text, false, null); }
     }
 }

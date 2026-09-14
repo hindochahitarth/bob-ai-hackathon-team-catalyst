@@ -66,7 +66,7 @@ class WatsonxServiceTest {
     // Test 4: BriefResult AI flag is correct
     @Test
     void briefResult_aiFlagIsCorrect() {
-        WatsonxService.BriefResult ai       = WatsonxService.BriefResult.ai("AI text");
+        WatsonxService.BriefResult ai       = WatsonxService.BriefResult.ai("AI text", "IBM Granite (local)");
         WatsonxService.BriefResult fallback = WatsonxService.BriefResult.fallback("Fallback text");
         assertThat(ai.aiGenerated()).isTrue();
         assertThat(ai.text()).isEqualTo("AI text");

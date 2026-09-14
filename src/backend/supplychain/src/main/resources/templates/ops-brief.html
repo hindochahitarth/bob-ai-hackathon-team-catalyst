@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
   <title>AI Ops Brief — Supply Chain Assistant</title>
@@ -179,10 +179,11 @@
     <!-- ── Brief Card ─────────────────────────────────────────── -->
     <div class="brief-card animate-fade-in-up">
 
-      <!-- Powered-by badge -->
+      <!-- Powered-by badge — shows actual AI source -->
       <div class="powered-badge">
         <span class="dot"></span>
-        IBM watsonx.ai &nbsp;·&nbsp; Granite
+        <span th:if="${aiGenerated and aiSource != null}" th:text="${aiSource}">IBM watsonx.ai</span>
+        <span th:unless="${aiGenerated}">System Generated</span>
       </div>
 
       <!-- Generated state -->
