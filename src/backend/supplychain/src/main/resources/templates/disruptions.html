@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Active Disruptions — Supply Chain Assistant</title>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('disruptions')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">Active Disruptions</h1>
+        <p class="page-subtitle">
+          <span th:text="${totalCount}">0</span> total events —
+          <span class="text-danger" th:text="${highCount}">0</span> HIGH severity
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Flash error (redirect from impact page if id not found) -->
+    <div th:if="${error}" class="alert alert-danger mb-6" role="alert">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-text" th:text="${error}"></div>
+    </div>
+
+    <!-- Disruptions Table -->
+    <div class="card animate-fade-in-up">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Disruption Events</div>
+          <div class="card__subtitle">All logged disruptions affecting active routes</div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div th:if="${disruptions.isEmpty()}" class="empty-state">
+        <div class="empty-state__icon">✅</div>
+        <div class="empty-state__title">No Active Disruptions</div>
+        <div class="empty-state__desc">
+          All routes are operating normally. No disruptions have been logged at this time.
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div th:unless="${disruptions.isEmpty()}" class="table-wrapper">
+        <table class="table" id="disruptions-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Affected Segment</th>
+              <th>Description</th>
+              <th>Severity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="d, stat : ${disruptions}">
+              <td class="text-muted font-mono" th:text="${d.id}">1</td>
+
+              <!-- Type with icon -->
+              <td>
+                <span th:switch="${d.type}">
+                  <span th:case="'WEATHER'">🌧️</span>
+                  <span th:case="'PORT'">⚓</span>
+                  <span th:case="'ROAD'">🛣️</span>
+                  <span th:case="'STRIKE'">✊</span>
+                  <span th:case="*">⚡</span>
+                </span>
+                &nbsp;<span th:text="${d.type}">TYPE</span>
+              </td>
+
+              <!-- Affected Segment -->
+              <td>
+                <span class="font-mono" style="font-size:var(--text-xs); color:var(--text-secondary);"
+                      th:text="${d.affectedSegment}">—</span>
+              </td>
+
+              <!-- Description truncated -->
+              <td style="max-width:280px;">
+                <span class="truncate" th:text="${d.description}">—</span>
+              </td>
+
+              <!-- Severity badge -->
+              <td>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'HIGH')}"
+                      class="badge badge-danger">HIGH</span>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'MEDIUM')}"
+                      class="badge badge-warning">MEDIUM</span>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'LOW')}"
+                      class="badge badge-neutral">LOW</span>
+                <!-- Fallback for any other value -->
+                <span th:if="${d.severity == null or (
+                                !#strings.equalsIgnoreCase(d.severity,'HIGH') and
+                                !#strings.equalsIgnoreCase(d.severity,'MEDIUM') and
+                                !#strings.equalsIgnoreCase(d.severity,'LOW'))}"
+                      class="badge badge-neutral" th:text="${d.severity}">—</span>
+              </td>
+
+              <!-- Action button -->
+              <td>
+                <a th:href="@{/disruptions/{id}/impact(id=${d.id})}"
+                   class="btn btn-primary btn-sm"
+                   th:id="'impact-btn-' + ${d.id}">
+                  🔍 Check Impact
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <span>
+            Showing <strong th:text="${disruptions.size()}">0</strong> disruption(s)
+          </span>
+          <span class="flex gap-2">
+            <span class="badge badge-danger">HIGH = immediate action</span>
+            <span class="badge badge-warning">MEDIUM = monitor</span>
+            <span class="badge badge-neutral">LOW = informational</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

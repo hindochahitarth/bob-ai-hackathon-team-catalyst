@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Disruption Impact — Supply Chain Assistant</title>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('disruptions')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Breadcrumb + back link -->
+    <div style="padding: var(--sp-6) 0 var(--sp-2); display:flex; align-items:center; gap:var(--sp-2);">
+      <a href="/disruptions" class="btn btn-secondary btn-sm">← Back to Disruptions</a>
+      <span class="text-muted" style="font-size:var(--text-xs);">
+        / Disruption #<span th:text="${event.id}"></span> / Impact Analysis
+      </span>
+    </div>
+
+    <!-- ── Disruption Summary Card ─────────────────────────────── -->
+    <div class="card animate-fade-in-up mb-8">
+
+      <!-- Card header with severity badge -->
+      <div class="card__header">
+        <div style="display:flex; align-items:center; gap:var(--sp-3);">
+          <div style="font-size:28px;" th:switch="${event.type}">
+            <span th:case="'WEATHER'">🌧️</span>
+            <span th:case="'PORT'">⚓</span>
+            <span th:case="'ROAD'">🛣️</span>
+            <span th:case="'STRIKE'">✊</span>
+            <span th:case="*">⚡</span>
+          </div>
+          <div>
+            <div class="card__title" style="font-size:var(--text-lg);">
+              <span th:text="${event.type}">TYPE</span> Disruption
+            </div>
+            <div class="card__subtitle">
+              Event #<span th:text="${event.id}"></span> · Segment:
+              <code style="font-family:var(--font-mono); font-size:var(--text-xs);
+                           color:var(--accent); background:var(--accent-subtle);
+                           padding:2px 6px; border-radius:var(--radius-sm);"
+                    th:text="${event.affectedSegment}">—</code>
+            </div>
+          </div>
+        </div>
+        <!-- Severity badge (right side) -->
+        <div>
+          <span th:if="${#strings.equalsIgnoreCase(event.severity, 'HIGH')}"
+                class="badge badge-live" style="font-size:var(--text-sm); padding:6px 14px;">
+            🔴 HIGH SEVERITY
+          </span>
+          <span th:if="${#strings.equalsIgnoreCase(event.severity, 'MEDIUM')}"
+                class="badge badge-warning" style="font-size:var(--text-sm); padding:6px 14px;">
+            🟠 MEDIUM SEVERITY
+          </span>
+          <span th:if="${#strings.equalsIgnoreCase(event.severity, 'LOW')}"
+                class="badge badge-neutral" style="font-size:var(--text-sm); padding:6px 14px;">
+            🔵 LOW SEVERITY
+          </span>
+          <span th:if="${event.severity == null or (
+                          !#strings.equalsIgnoreCase(event.severity,'HIGH') and
+                          !#strings.equalsIgnoreCase(event.severity,'MEDIUM') and
+                          !#strings.equalsIgnoreCase(event.severity,'LOW'))}"
+                class="badge badge-neutral" style="font-size:var(--text-sm); padding:6px 14px;"
+                th:text="${event.severity}">—</span>
+        </div>
+      </div>
+
+      <!-- Detail rows -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-4);">
+        <div style="background:var(--bg-elevated); border-radius:var(--radius); padding:var(--sp-4);">
+          <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase;
+                                         letter-spacing:.5px; margin-bottom:var(--sp-2);">
+            Disruption Type
+          </div>
+          <div class="text-primary" style="font-weight:600;" th:text="${event.type}">—</div>
+        </div>
+        <div style="background:var(--bg-elevated); border-radius:var(--radius); padding:var(--sp-4);">
+          <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase;
+                                         letter-spacing:.5px; margin-bottom:var(--sp-2);">
+            Affected Route Segment
+          </div>
+          <div class="text-primary" style="font-weight:600;" th:text="${event.affectedSegment}">—</div>
+        </div>
+        <div style="background:var(--bg-elevated); border-radius:var(--radius); padding:var(--sp-4);
+                    grid-column: 1 / -1;">
+          <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase;
+                                         letter-spacing:.5px; margin-bottom:var(--sp-2);">
+            Description
+          </div>
+          <div class="text-primary" th:text="${event.description}">—</div>
+        </div>
+      </div>
+
+      <!-- Affected count callout -->
+      <div th:if="${affectedCount > 0}"
+           class="alert alert-warning mt-4" style="margin-top:var(--sp-4);">
+        <span class="alert-icon">📦</span>
+        <div class="alert-text">
+          <div class="alert-title">
+            <span th:text="${affectedCount}">0</span> shipment(s) are passing through this segment
+          </div>
+          Review the suggested actions below and coordinate with carriers.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Affected Shipments Section ─────────────────────────── -->
+    <div class="section-title">Affected Shipments</div>
+
+    <div class="card animate-fade-in-up">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Shipments on Disrupted Segment</div>
+          <div class="card__subtitle">
+            Routes whose path includes "<span th:text="${event.affectedSegment}">segment</span>"
+          </div>
+        </div>
+        <span class="badge badge-accent" th:text="${affectedCount} + ' affected'">0 affected</span>
+      </div>
+
+      <!-- Empty state — no affected shipments -->
+      <div th:if="${shipmentActions.isEmpty()}" class="empty-state">
+        <div class="empty-state__icon">✅</div>
+        <div class="empty-state__title">No Shipments Affected</div>
+        <div class="empty-state__desc">
+          No active shipments are routed through the disrupted segment
+          "<strong th:text="${event.affectedSegment}">—</strong>".
+          This disruption may affect future scheduling only.
+        </div>
+        <a href="/disruptions" class="btn btn-secondary btn-sm mt-4">← Back to Disruptions</a>
+      </div>
+
+      <!-- Affected shipments table -->
+      <div th:unless="${shipmentActions.isEmpty()}" class="table-wrapper">
+        <table class="table" id="affected-shipments-table">
+          <thead>
+            <tr>
+              <th>Tracking #</th>
+              <th>Cargo Type</th>
+              <th>Route</th>
+              <th>Cold Chain</th>
+              <th>Current Location</th>
+              <th>Shipment Status</th>
+              <th>Suggested Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="entry : ${shipmentActions}">
+              <!-- Tracking number -->
+              <td>
+                <span class="font-mono" style="color:var(--accent);"
+                      th:text="${entry.key.trackingNumber}">—</span>
+              </td>
+
+              <!-- Cargo type -->
+              <td th:text="${entry.key.cargoType}">—</td>
+
+              <!-- Route origin → destination -->
+              <td>
+                <span th:if="${entry.key.route != null}"
+                      class="text-secondary"
+                      th:text="${entry.key.route.origin} + ' → ' + ${entry.key.route.destination}">
+                  —
+                </span>
+                <span th:unless="${entry.key.route != null}" class="text-muted">No route</span>
+              </td>
+
+              <!-- Cold chain -->
+              <td>
+                <span th:if="${entry.key.coldChain}" class="badge badge-info">❄️ Yes</span>
+                <span th:unless="${entry.key.coldChain}" class="badge badge-neutral">No</span>
+              </td>
+
+              <!-- Current location -->
+              <td th:text="${entry.key.currentLocation}">—</td>
+
+              <!-- Shipment status -->
+              <td>
+                <span th:if="${#strings.equalsIgnoreCase(entry.key.status, 'IN_TRANSIT')
+                               or #strings.equalsIgnoreCase(entry.key.status, 'In Transit')}"
+                      class="badge badge-success" th:text="${entry.key.status}">In Transit</span>
+                <span th:if="${#strings.equalsIgnoreCase(entry.key.status, 'DELAYED')
+                               or #strings.equalsIgnoreCase(entry.key.status, 'Delayed')}"
+                      class="badge badge-warning" th:text="${entry.key.status}">Delayed</span>
+                <span th:if="${#strings.equalsIgnoreCase(entry.key.status, 'CRITICAL')
+                               or #strings.equalsIgnoreCase(entry.key.status, 'Critical')}"
+                      class="badge badge-live" th:text="${entry.key.status}">Critical</span>
+                <span th:if="${entry.key.status == null or (
+                                !#strings.equalsIgnoreCase(entry.key.status,'IN_TRANSIT') and
+                                !#strings.equalsIgnoreCase(entry.key.status,'In Transit') and
+                                !#strings.equalsIgnoreCase(entry.key.status,'DELAYED') and
+                                !#strings.equalsIgnoreCase(entry.key.status,'Delayed') and
+                                !#strings.equalsIgnoreCase(entry.key.status,'CRITICAL') and
+                                !#strings.equalsIgnoreCase(entry.key.status,'Critical'))}"
+                      class="badge badge-neutral" th:text="${entry.key.status}">—</span>
+              </td>
+
+              <!-- Suggested action -->
+              <td style="max-width:320px; font-size:var(--text-xs); color:var(--text-secondary);"
+                  th:text="${entry.value}">
+                Suggested action text here.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <span>
+            <strong th:text="${affectedCount}">0</strong> shipment(s) passing through disrupted segment
+          </span>
+          <span class="text-muted">Coordinate rerouting with logistics partners</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
