@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Cold Chain Monitor — Supply Chain Assistant</title>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('coldchain')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">❄️ Cold Chain Monitor</h1>
+        <p class="page-subtitle">
+          Temperature-sensitive shipments — target range 2°C to 8°C
+        </p>
+      </div>
+      <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    </div>
+
+    <!-- Stat tiles -->
+    <div class="stat-grid stagger mb-8">
+
+      <div class="stat-card stat-card--info">
+        <div class="stat-card__icon">❄️</div>
+        <div class="stat-card__value" th:text="${totalCount}">0</div>
+        <div class="stat-card__label">Cold Chain Shipments</div>
+      </div>
+
+      <div class="stat-card stat-card--success">
+        <div class="stat-card__icon">✅</div>
+        <div class="stat-card__value" th:text="${normalCount}">0</div>
+        <div class="stat-card__label">Within Normal Range</div>
+      </div>
+
+      <div class="stat-card stat-card--warning">
+        <div class="stat-card__icon">⚠️</div>
+        <div class="stat-card__value" th:text="${minorBreachCount}">0</div>
+        <div class="stat-card__label">Minor Breaches</div>
+      </div>
+
+      <div class="stat-card stat-card--danger">
+        <div class="stat-card__icon">🚨</div>
+        <div class="stat-card__value" th:text="${majorBreachCount}">0</div>
+        <div class="stat-card__label">Major Breaches</div>
+      </div>
+
+    </div>
+
+    <!-- Table card -->
+    <div class="card animate-fade-in-up">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Shipment Temperature Log</div>
+          <div class="card__subtitle">
+            Latest sensor reading per cold-chain shipment
+          </div>
+        </div>
+        <!-- Legend -->
+        <div class="flex gap-2" style="flex-wrap:wrap;">
+          <span class="badge badge-success">2–8°C Normal</span>
+          <span class="badge badge-warning">Minor Breach</span>
+          <span class="badge badge-danger">Major Breach</span>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div th:if="${rows.isEmpty()}" class="empty-state">
+        <div class="empty-state__icon">❄️</div>
+        <div class="empty-state__title">No Cold Chain Shipments</div>
+        <div class="empty-state__desc">
+          There are currently no shipments with the cold chain flag enabled.
+          Cold-chain tracking will appear here once such shipments are added.
+        </div>
+        <a href="/dashboard" class="btn btn-secondary btn-sm" style="margin-top:var(--sp-4);">← Back to Dashboard</a>
+      </div>
+
+      <!-- Data table -->
+      <div th:unless="${rows.isEmpty()}" class="table-wrapper">
+        <table class="table" id="coldchain-table">
+          <thead>
+            <tr>
+              <th>Tracking #</th>
+              <th>Cargo Type</th>
+              <th>Route</th>
+              <th>Current Location</th>
+              <th>Latest Temp (°C)</th>
+              <th>Recorded At</th>
+              <th>Temp Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="row : ${rows}"
+                th:style="${row.status() == 'Major Breach'} ?
+                           'background: rgba(239,68,68,0.07); border-left: 3px solid var(--danger);' :
+                           (${row.status() == 'Minor Breach'} ?
+                           'background: rgba(245,158,11,0.05); border-left: 3px solid var(--warning);' :
+                           '')">
+
+              <!-- Tracking number -->
+              <td>
+                <span class="font-mono" style="color:var(--accent);"
+                      th:text="${row.shipment().trackingNumber()}">—</span>
+              </td>
+
+              <!-- Cargo type -->
+              <td th:text="${row.shipment().cargoType()}">—</td>
+
+              <!-- Route -->
+              <td>
+                <span th:if="${row.shipment().route() != null}" class="text-secondary"
+                      th:text="${row.shipment().route().origin()} + ' → ' + ${row.shipment().route().destination()}">
+                </span>
+                <span th:unless="${row.shipment().route() != null}" class="text-muted">—</span>
+              </td>
+
+              <!-- Current location -->
+              <td>
+                <span style="color:var(--text-secondary);">📍</span>
+                <span th:text="${row.shipment().currentLocation()}">—</span>
+              </td>
+
+              <!-- Temperature reading -->
+              <td>
+                <span th:if="${row.reading() != null}">
+                  <!-- Colour the temp value by breach level -->
+                  <strong th:style="${row.status() == 'Major Breach'} ? 'color:var(--danger)' :
+                                    (${row.status() == 'Minor Breach'} ? 'color:var(--warning)' :
+                                    'color:var(--success)')"
+                          th:text="${#numbers.formatDecimal(row.reading().temperatureCelsius(), 1, 1)} + ' °C'">
+                    —
+                  </strong>
+                </span>
+                <span th:unless="${row.reading() != null}" class="text-muted">No reading</span>
+              </td>
+
+              <!-- Recorded at -->
+              <td class="text-secondary">
+                <span th:if="${row.reading() != null}"
+                      th:text="${#temporals.format(row.reading().recordedAt(), 'dd MMM yyyy, HH:mm')}">
+                  —
+                </span>
+                <span th:unless="${row.reading() != null}" class="text-muted">—</span>
+              </td>
+
+              <!-- Status badge -->
+              <td>
+                <span th:if="${row.status() == 'Normal'}"
+                      class="badge badge-success">✓ Normal</span>
+                <span th:if="${row.status() == 'Minor Breach'}"
+                      class="badge badge-warning">⚠ Minor Breach</span>
+                <span th:if="${row.status() == 'Major Breach'}"
+                      class="badge badge-live">🚨 Major Breach</span>
+                <span th:if="${row.status() == 'No Data'}"
+                      class="badge badge-neutral">No Data</span>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <span>
+            <strong th:text="${totalCount}">0</strong> cold-chain shipment(s) monitored
+          </span>
+          <span class="text-muted">Target range: 2°C – 8°C</span>
+        </div>
+      </div>
+
+    </div><!-- /card -->
+
+  </div>
+</div>
+
+</body>
+</html>
