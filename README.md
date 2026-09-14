@@ -72,7 +72,7 @@ We built a system that automatically identifies which shipments are affected the
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/[your-username]/bob-ai-hackathon-team-catalyst.git
+git clone https://github.com/hindochahitarth/bob-ai-hackathon-team-catalyst
 cd bob-ai-hackathon-team-catalyst
 
 # 2. Install dependencies
