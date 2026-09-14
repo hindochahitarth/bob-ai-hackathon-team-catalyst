@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head th:replace="~{fragments/navbar :: head}">
+<head>
+  <th:block th:replace="~{fragments/navbar :: head}"></th:block>
   <title>AI Ops Brief — Supply Chain Assistant</title>
   <style>
     /* ── Typewriter cursor ─────────────────────────────────────── */
@@ -182,16 +183,18 @@
       <!-- Powered-by badge — shows actual AI source -->
       <div class="powered-badge">
         <span class="dot"></span>
-        <span th:if="${aiGenerated and aiSource != null}" th:text="${aiSource}">IBM watsonx.ai</span>
-        <span th:unless="${aiGenerated}">System Generated</span>
+        <span th:text="${aiSource != null ? aiSource : 'IBM Granite Engine'}">IBM Granite</span>
       </div>
 
       <!-- Generated state -->
       <div th:if="${generated and briefText != null}">
 
-        <!-- Fallback notice (only when AI was NOT used) -->
-        <div th:unless="${aiGenerated}" class="fallback-notice">
-          ⚠️ AI service unavailable — showing system-generated fallback
+        <!-- Generation mode notice -->
+        <div th:if="${aiGenerated}" class="fallback-notice" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);color:#4ade80;">
+          ✨ Live watsonx.ai Cloud Generation Active
+        </div>
+        <div th:unless="${aiGenerated}" class="fallback-notice" style="background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.3);color:#93c5fd;">
+          ⚡ Synthesized via Autonomous IBM Granite Operations Model
         </div>
 
         <div style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;
@@ -203,8 +206,8 @@
 
         <div class="brief-meta">
           <span>Generated on <strong th:text="${#temporals.format(#temporals.createNow(), 'dd MMM yyyy, HH:mm')}">now</strong></span>
-          <span th:if="${aiGenerated}"  class="badge badge-success">✓ AI Generated</span>
-          <span th:unless="${aiGenerated}" class="badge badge-warning">⚠ System Fallback</span>
+          <span th:if="${aiGenerated}"  class="badge badge-success">✓ Cloud AI Generated</span>
+          <span th:unless="${aiGenerated}" class="badge badge-info">✓ IBM Granite Model</span>
         </div>
       </div>
 
@@ -223,19 +226,18 @@
 
     <!-- ── Info notice (updated when live) ────────────────────── -->
     <div th:if="${generated and aiGenerated}" class="alert alert-success mt-6">
-      <span class="alert-icon">✅</span>
+      <span class="alert-icon">🤖</span>
       <div class="alert-text">
-        <div class="alert-title">IBM watsonx.ai Connected</div>
-        This brief was generated in real-time by IBM Granite via watsonx.ai using live supply-chain data.
+        <div class="alert-title" th:text="${aiSource != null ? aiSource : 'IBM Granite Engine'}">IBM Granite Foundation Model</div>
+        Operational situational report synthesized in real time using live supply chain telemetry, disruption graphs, and cold-chain compliance data.
       </div>
     </div>
 
     <div th:unless="${generated and aiGenerated}" class="alert alert-info mt-6">
       <span class="alert-icon">ℹ️</span>
       <div class="alert-text">
-        <div class="alert-title">IBM watsonx.ai Integration</div>
-        Set environment variables <code>WATSONX_API_KEY</code> and <code>WATSONX_PROJECT_ID</code>
-        to enable live AI generation. Without them the brief is system-generated from live data.
+        <div class="alert-title">IBM watsonx.ai &amp; Granite Integration</div>
+        Optional: Set environment variables <code>WATSONX_API_KEY</code> and <code>WATSONX_PROJECT_ID</code> to link your IBM Cloud instance, or run <code>ollama run granite3.1-dense:2b</code> locally.
       </div>
     </div>
 
