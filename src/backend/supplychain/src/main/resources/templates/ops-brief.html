@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>AI Ops Brief — Supply Chain Assistant</title>
+  <style>
+    /* Typewriter animation for the brief text */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+    .brief-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      margin-left: 2px;
+      animation: blink 1s ease-in-out infinite;
+    }
+
+    /* Brief card */
+    .brief-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-8);
+      line-height: 1.85;
+      font-size: var(--text-base);
+      color: var(--text-primary);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle top gradient bar */
+    .brief-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #6366f1, #06b6d4);
+    }
+
+    /* IBM Bob powered badge */
+    .powered-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      background: linear-gradient(135deg, #1d4ed8, #0f172a);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: #93c5fd;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      margin-bottom: var(--sp-6);
+    }
+    .powered-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    /* Brief content formatted text */
+    .brief-body {
+      white-space: pre-line;
+      color: var(--text-primary);
+    }
+
+    .brief-body strong {
+      color: var(--text-primary);
+    }
+
+    /* Placeholder state */
+    .brief-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-12) var(--sp-6);
+      text-align: center;
+      gap: var(--sp-4);
+      min-height: 260px;
+    }
+
+    .brief-placeholder__icon {
+      font-size: 48px;
+      opacity: 0.25;
+    }
+
+    .brief-placeholder__title {
+      font-size: var(--text-md);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .brief-placeholder__desc {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      max-width: 380px;
+    }
+
+    /* Generate button pulse on hover */
+    .btn-generate {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-generate::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--duration) var(--ease);
+    }
+    .btn-generate:hover::after { opacity: 1; }
+
+    /* Metadata footer */
+    .brief-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--sp-6);
+      padding-top: var(--sp-4);
+      border-top: 1px solid var(--border-subtle);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('aiops')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container" style="max-width: 900px;">
+
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">AI Operations Brief</h1>
+        <p class="page-subtitle">
+          AI-generated summary of your supply chain status — powered by IBM Bob
+        </p>
+      </div>
+      <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    </div>
+
+    <!-- Generate Brief form -->
+    <div class="card mb-6 animate-fade-in-up"
+         style="display:flex; align-items:center; justify-content:space-between;
+                flex-wrap:wrap; gap:var(--sp-4); padding: var(--sp-5) var(--sp-6);">
+      <div>
+        <div style="font-size:var(--text-base); font-weight:600; color:var(--text-primary);">
+          Generate Today's Operations Brief
+        </div>
+        <div style="font-size:var(--text-sm); color:var(--text-muted); margin-top:2px;">
+          Analyses shipments, disruptions, fleet, and cold-chain data to produce a concise brief.
+        </div>
+      </div>
+      <form method="post" th:action="@{/ops-brief}">
+        <!-- CSRF token is handled automatically by Spring Security if present;
+             for plain Spring Boot without Security, this form works as-is -->
+        <button type="submit"
+                id="generate-brief-btn"
+                class="btn btn-primary btn-generate"
+                style="gap: var(--sp-3); padding: var(--sp-3) var(--sp-6); font-size:var(--text-base);">
+          <span style="font-size:18px;">✨</span>
+          Generate Brief
+        </button>
+      </form>
+    </div>
+
+    <!-- Brief output card -->
+    <div class="brief-card animate-fade-in-up">
+
+      <!-- Powered by IBM Bob badge -->
+      <div class="powered-badge">
+        <span class="dot"></span>
+        Powered by IBM Bob AI
+      </div>
+
+      <!-- When brief has been generated -->
+      <div th:if="${generated and briefText != null}">
+        <div style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;
+                    color:var(--text-muted); font-weight:600; margin-bottom:var(--sp-4);">
+          OPERATIONS BRIEF
+        </div>
+        <div class="brief-body" th:text="${briefText}"></div>
+        <div class="brief-meta">
+          <span>Generated on <strong th:text="${#temporals.format(#temporals.createNow(), 'dd MMM yyyy, HH:mm')}">now</strong></span>
+          <span class="badge badge-success">✓ Brief Ready</span>
+        </div>
+      </div>
+
+      <!-- Placeholder state — before generation -->
+      <div th:unless="${generated and briefText != null}" class="brief-placeholder">
+        <div class="brief-placeholder__icon">🤖</div>
+        <div class="brief-placeholder__title">No Brief Generated Yet</div>
+        <div class="brief-placeholder__desc">
+          Click <strong>Generate Brief</strong> above to produce an AI-powered
+          summary of your current supply chain operations.
+          Once connected to IBM Bob, this will include real-time insights and recommendations.
+        </div>
+        <div class="brief-cursor"></div>
+      </div>
+
+    </div>
+
+    <!-- Info notice -->
+    <div class="alert alert-info mt-6" style="margin-top:var(--sp-6);">
+      <span class="alert-icon">ℹ️</span>
+      <div class="alert-text">
+        <div class="alert-title">IBM Bob Integration</div>
+        The brief currently uses placeholder data. To connect live AI responses,
+        wire the <code style="font-family:var(--font-mono); font-size:var(--text-xs);
+        background:rgba(6,182,212,0.1); padding:2px 6px; border-radius:4px;">OpsController.generateBrief()</code>
+        POST handler to the IBM Bob API endpoint.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
