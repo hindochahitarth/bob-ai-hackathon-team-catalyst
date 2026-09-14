@@ -38,14 +38,14 @@ public class ColdChainService {
      * Determine breach status string based on temperature.
      *
      * Target range: 2 – 8 °C
-     *   Normal      : 2 ≤ t ≤ 8
-     *   Minor Breach: -2 ≤ t < 2  OR  8 < t ≤ 12
-     *   Major Breach: t < -2       OR  t > 12
+     *   Normal      : 2.0 ≤ t ≤ 8.0
+     *   Minor Breach: 0.0 ≤ t < 2.0  OR  8.0 < t ≤ 10.0
+     *   Major Breach: t < 0.0        OR  t > 10.0
      */
     public String breachStatus(double tempCelsius) {
         if (tempCelsius >= 2.0 && tempCelsius <= 8.0) {
             return "Normal";
-        } else if (tempCelsius >= -2.0 && tempCelsius <= 12.0) {
+        } else if ((tempCelsius >= 0.0 && tempCelsius < 2.0) || (tempCelsius > 8.0 && tempCelsius <= 10.0)) {
             return "Minor Breach";
         } else {
             return "Major Breach";

@@ -8,4 +8,6 @@ import java.util.List;
 public interface FleetAssetRepository extends JpaRepository<FleetAsset, Long> {
 
     List<FleetAsset> findByStatus(String status);
+
+    long countByStatus(String status);
 }

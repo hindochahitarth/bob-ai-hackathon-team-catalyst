@@ -94,67 +94,68 @@
           </thead>
           <tbody>
             <tr th:each="row : ${rows}"
-                th:style="${row.status() == 'Major Breach'} ?
+                th:style="${row.status == 'Major Breach'} ?
                            'background: rgba(239,68,68,0.07); border-left: 3px solid var(--danger);' :
-                           (${row.status() == 'Minor Breach'} ?
+                           (${row.status == 'Minor Breach'} ?
                            'background: rgba(245,158,11,0.05); border-left: 3px solid var(--warning);' :
                            '')">
 
               <!-- Tracking number -->
               <td>
-                <span class="font-mono" style="color:var(--accent);"
-                      th:text="${row.shipment().trackingNumber()}">—</span>
+                <a th:href="@{/track(trackingNumber=${row.shipment.trackingNumber})}"
+                   class="font-mono" style="color:var(--accent); text-decoration:none; font-weight:600;"
+                   th:text="${row.shipment.trackingNumber}">—</a>
               </td>
 
               <!-- Cargo type -->
-              <td th:text="${row.shipment().cargoType()}">—</td>
+              <td th:text="${row.shipment.cargoType}">—</td>
 
               <!-- Route -->
               <td>
-                <span th:if="${row.shipment().route() != null}" class="text-secondary"
-                      th:text="${row.shipment().route().origin()} + ' → ' + ${row.shipment().route().destination()}">
+                <span th:if="${row.shipment.route != null}" class="text-secondary"
+                      th:text="${row.shipment.route.origin} + ' → ' + ${row.shipment.route.destination}">
                 </span>
-                <span th:unless="${row.shipment().route() != null}" class="text-muted">—</span>
+                <span th:unless="${row.shipment.route != null}" class="text-muted">—</span>
               </td>
 
               <!-- Current location -->
               <td>
                 <span style="color:var(--text-secondary);">📍</span>
-                <span th:text="${row.shipment().currentLocation()}">—</span>
+                <span th:text="${row.shipment.currentLocation}">—</span>
               </td>
 
               <!-- Temperature reading -->
               <td>
-                <span th:if="${row.reading() != null}">
+                <span th:if="${row.reading != null}">
                   <!-- Colour the temp value by breach level -->
-                  <strong th:style="${row.status() == 'Major Breach'} ? 'color:var(--danger)' :
-                                    (${row.status() == 'Minor Breach'} ? 'color:var(--warning)' :
+                  <strong th:style="${row.status == 'Major Breach'} ? 'color:var(--danger)' :
+                                    (${row.status == 'Minor Breach'} ? 'color:var(--warning)' :
                                     'color:var(--success)')"
-                          th:text="${#numbers.formatDecimal(row.reading().temperatureCelsius(), 1, 1)} + ' °C'">
+                          th:text="${#numbers.formatDecimal(row.reading.temperatureCelsius, 1, 1)} + ' °C'">
                     —
                   </strong>
                 </span>
-                <span th:unless="${row.reading() != null}" class="text-muted">No reading</span>
+                <span th:unless="${row.reading != null}" class="text-muted">No reading</span>
               </td>
 
               <!-- Recorded at -->
               <td class="text-secondary">
-                <span th:if="${row.reading() != null}"
-                      th:text="${#temporals.format(row.reading().recordedAt(), 'dd MMM yyyy, HH:mm')}">
+                <span th:if="${row.reading != null}"
+                      th:text="${#temporals.format(row.reading.recordedAt, 'dd MMM yyyy, HH:mm')}">
                   —
                 </span>
-                <span th:unless="${row.reading() != null}" class="text-muted">—</span>
+                <span th:unless="${row.reading != null}" class="text-muted">—</span>
               </td>
 
               <!-- Status badge -->
               <td>
-                <span th:if="${row.status() == 'Normal'}"
+                <span th:if="${row.status == 'Normal'}"
                       class="badge badge-success">✓ Normal</span>
-                <span th:if="${row.status() == 'Minor Breach'}"
+                <span th:if="${row.status == 'Minor Breach'}"
                       class="badge badge-warning">⚠ Minor Breach</span>
-                <span th:if="${row.status() == 'Major Breach'}"
+                <span th:if="${row.status == 'Major Breach'}"
                       class="badge badge-live">🚨 Major Breach</span>
-                <span th:if="${row.status() == 'No Data'}"
+                <span th:if="${row.status == 'No Data'}"
                       class="badge badge-neutral">No Data</span>
               </td>
 

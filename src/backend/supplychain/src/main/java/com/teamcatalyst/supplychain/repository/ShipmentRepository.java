@@ -11,4 +11,8 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
 
     /** Returns all shipments with coldChain flag set to true. */
     List<Shipment> findByColdChainTrue();
+
+    /** Returns the count of cold-chain shipments for the dashboard stat tile. */
+    long countByColdChainTrue();
 }
+

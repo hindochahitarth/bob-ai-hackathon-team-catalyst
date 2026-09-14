@@ -15,11 +15,11 @@
     <div class="page-header flex items-center justify-between">
       <div>
         <h1 class="page-title">Operations Dashboard</h1>
-        <p class="page-subtitle">Live supply chain overview — updated in real time</p>
+        <p class="page-subtitle">Live supply chain overview — updated from database</p>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-secondary btn-sm">⬇ Export</button>
-        <button class="btn btn-primary btn-sm">＋ New Shipment</button>
+        <a href="/ops-brief" class="btn btn-secondary btn-sm">⚡ AI Brief</a>
+        <a href="/track" class="btn btn-primary btn-sm">🔍 Track Shipment</a>
       </div>
     </div>
 
@@ -28,31 +28,31 @@
 
       <div class="stat-card stat-card--info">
         <div class="stat-card__icon">📦</div>
-        <div class="stat-card__value">142</div>
+        <div class="stat-card__value" th:text="${totalShipments}">0</div>
         <div class="stat-card__label">Active Shipments</div>
-        <span class="stat-card__delta stat-card__delta--up">▲ 8% this week</span>
+        <span class="stat-card__delta stat-card__delta--up">Live database count</span>
       </div>
 
-      <div class="stat-card stat-card--warning">
+      <a href="/disruptions" style="text-decoration:none;" class="stat-card stat-card--warning">
         <div class="stat-card__icon">⚠️</div>
-        <div class="stat-card__value">5</div>
+        <div class="stat-card__value" th:text="${totalDisruptions}">0</div>
         <div class="stat-card__label">Active Disruptions</div>
-        <span class="stat-card__delta stat-card__delta--down">▼ 2 resolved today</span>
-      </div>
+        <span class="stat-card__delta stat-card__delta--down">Logged incidents</span>
+      </a>
 
       <a href="/fleet/idle" style="text-decoration:none;" class="stat-card stat-card--danger">
         <div class="stat-card__icon">🚛</div>
-        <div class="stat-card__value">17</div>
+        <div class="stat-card__value" th:text="${idleFleetCount}">0</div>
         <div class="stat-card__label">Idle Fleet Assets</div>
-        <span class="stat-card__delta stat-card__delta--up">▲ 3 new idle</span>
+        <span class="stat-card__delta stat-card__delta--up">Available for dispatch</span>
       </a>
 
-      <div class="stat-card stat-card--success">
+      <a href="/coldchain" style="text-decoration:none;" class="stat-card stat-card--success">
         <div class="stat-card__icon">❄️</div>
-        <div class="stat-card__value">98%</div>
-        <div class="stat-card__label">Cold Chain Compliance</div>
-        <span class="stat-card__delta stat-card__delta--up">▲ On target</span>
-      </div>
+        <div class="stat-card__value" th:text="${coldChainCount}">0</div>
+        <div class="stat-card__label">Cold Chain Shipments</div>
+        <span class="stat-card__delta stat-card__delta--up">Monitored sensors</span>
+      </a>
 
     </div>
 
@@ -61,9 +61,9 @@
       <div class="card__header">
         <div>
           <div class="card__title">Recent Shipments</div>
-          <div class="card__subtitle">Last 5 active tracking entries</div>
+          <div class="card__subtitle">Latest active tracking entries in system</div>
         </div>
-        <a href="/track" class="btn btn-secondary btn-sm">View all →</a>
+        <a href="/track" class="btn btn-secondary btn-sm">View all / Track →</a>
       </div>
 
       <div class="table-wrapper">
@@ -79,51 +79,41 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="font-mono">TRK-00421</td>
-              <td>Pharmaceuticals</td>
-              <td>Mumbai → Delhi</td>
-              <td><span class="badge badge-info">Yes</span></td>
-              <td>Surat Hub</td>
-              <td><span class="badge badge-success">In Transit</span></td>
+            <tr th:if="${recentShipments == null or recentShipments.isEmpty()}">
+              <td colspan="6" class="text-center text-muted">No shipments found in database</td>
             </tr>
-            <tr>
-              <td class="font-mono">TRK-00398</td>
-              <td>Electronics</td>
-              <td>Chennai → Pune</td>
-              <td><span class="badge badge-neutral">No</span></td>
-              <td>Hyderabad</td>
-              <td><span class="badge badge-warning">Delayed</span></td>
-            </tr>
-            <tr>
-              <td class="font-mono">TRK-00375</td>
-              <td>Perishables</td>
-              <td>Kolkata → Mumbai</td>
-              <td><span class="badge badge-info">Yes</span></td>
-              <td>Nagpur</td>
-              <td><span class="badge badge-success">In Transit</span></td>
-            </tr>
-            <tr>
-              <td class="font-mono">TRK-00361</td>
-              <td>Industrial Parts</td>
-              <td>Delhi → Bangalore</td>
-              <td><span class="badge badge-neutral">No</span></td>
-              <td>Bhopal</td>
-              <td><span class="badge badge-live">Critical</span></td>
-            </tr>
-            <tr>
-              <td class="font-mono">TRK-00340</td>
-              <td>FMCG</td>
-              <td>Ahmedabad → Jaipur</td>
-              <td><span class="badge badge-neutral">No</span></td>
-              <td>Jaipur Hub</td>
-              <td><span class="badge badge-success">Delivered</span></td>
+            <tr th:each="s : ${recentShipments}">
+              <td class="font-mono">
+                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}"
+                   style="color:var(--accent); text-decoration:none; font-weight:600;"
+                   th:text="${s.trackingNumber}">TRK-00000</a>
+              </td>
+              <td th:text="${s.cargoType}">General Cargo</td>
+              <td>
+                <span th:if="${s.route != null}" th:text="${s.route.origin + ' → ' + s.route.destination}">Origin → Destination</span>
+                <span th:unless="${s.route != null}" class="text-muted">—</span>
+              </td>
+              <td>
+                <span th:if="${s.coldChain}" class="badge badge-info">❄️ Yes</span>
+                <span th:unless="${s.coldChain}" class="badge badge-neutral">No</span>
+              </td>
+              <td>
+                <span>📍 </span><span th:text="${s.currentLocation}">Unknown</span>
+              </td>
+              <td>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'IN_TRANSIT') or #strings.equalsIgnoreCase(s.status, 'In Transit')}" class="badge badge-success">In Transit</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'DELAYED') or #strings.equalsIgnoreCase(s.status, 'Delayed')}" class="badge badge-warning">Delayed</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'DELIVERED') or #strings.equalsIgnoreCase(s.status, 'Delivered')}" class="badge badge-accent">Delivered</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status, 'CRITICAL') or #strings.equalsIgnoreCase(s.status, 'Critical')}" class="badge badge-live">Critical</span>
+                <span th:if="${s.status == null or (!#strings.equalsIgnoreCase(s.status,'IN_TRANSIT') and !#strings.equalsIgnoreCase(s.status,'In Transit') and !#strings.equalsIgnoreCase(s.status,'DELAYED') and !#strings.equalsIgnoreCase(s.status,'Delayed') and !#strings.equalsIgnoreCase(s.status,'DELIVERED') and !#strings.equalsIgnoreCase(s.status,'Delivered') and !#strings.equalsIgnoreCase(s.status,'CRITICAL') and !#strings.equalsIgnoreCase(s.status,'Critical'))}"
+                      class="badge badge-neutral" th:text="${s.status}">—</span>
+              </td>
             </tr>
           </tbody>
         </table>
         <div class="table-footer">
-          <span>Showing 5 of 142 shipments</span>
-          <span>Last refreshed: just now</span>
+          <span>Showing <strong th:text="${recentShipments != null ? recentShipments.size() : 0}">0</strong> of <strong th:text="${totalShipments}">0</strong> shipments</span>
+          <span>Database backed</span>
         </div>
       </div>
     </div>
@@ -138,25 +128,18 @@
           <a href="/disruptions" class="btn btn-secondary btn-sm">Details →</a>
         </div>
         <div class="flex flex-col gap-3">
-          <div class="alert alert-danger">
-            <span class="alert-icon">🔴</span>
-            <div class="alert-text">
-              <div class="alert-title">Port Congestion — JNPT</div>
-              Cargo clearance delays up to 48h. 12 shipments affected.
-            </div>
+          <div th:if="${recentDisruptions == null or recentDisruptions.isEmpty()}" class="text-muted" style="font-size:var(--text-sm); padding:var(--sp-4);">
+            No active disruptions reported.
           </div>
-          <div class="alert alert-warning">
-            <span class="alert-icon">🟠</span>
+          <div th:each="d : ${recentDisruptions}"
+               th:class="'alert ' + (${#strings.equalsIgnoreCase(d.severity, 'HIGH')} ? 'alert-danger' : (${#strings.equalsIgnoreCase(d.severity, 'MEDIUM')} ? 'alert-warning' : 'alert-info'))">
+            <span class="alert-icon" th:text="${#strings.equalsIgnoreCase(d.severity, 'HIGH') ? '🔴' : (#strings.equalsIgnoreCase(d.severity, 'MEDIUM') ? '🟠' : '🔵')}"></span>
             <div class="alert-text">
-              <div class="alert-title">NH-48 Road Closure</div>
-              Alternate route via SH-8 adding ~4h transit time.
-            </div>
-          </div>
-          <div class="alert alert-info">
-            <span class="alert-icon">🔵</span>
-            <div class="alert-text">
-              <div class="alert-title">Weather Advisory — West Bengal</div>
-              Heavy rain forecast for next 3 days. Monitor cold-chain loads.
+              <div class="alert-title">
+                <span th:text="${d.type + ' — ' + d.affectedSegment}"></span>
+                &nbsp;<a th:href="@{/disruptions/{id}/impact(id=${d.id})}" style="font-size:var(--text-xs); color:inherit; text-decoration:underline;">Inspect Impact →</a>
+              </div>
+              <span th:text="${d.description}"></span>
             </div>
           </div>
         </div>
@@ -179,29 +162,20 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td class="font-mono">TRK-A14</td>
-                <td>Heavy Truck</td>
-                <td>Delhi Hub</td>
-                <td><span class="badge badge-warning">Idle</span></td>
+              <tr th:if="${recentFleetAssets == null or recentFleetAssets.isEmpty()}">
+                <td colspan="4" class="text-muted text-center">No fleet assets registered</td>
               </tr>
-              <tr>
-                <td class="font-mono">VAN-B07</td>
-                <td>Refrigerated Van</td>
-                <td>Mumbai Cold Store</td>
-                <td><span class="badge badge-success">Active</span></td>
-              </tr>
-              <tr>
-                <td class="font-mono">TRK-C22</td>
-                <td>Medium Truck</td>
-                <td>Chennai Port</td>
-                <td><span class="badge badge-danger">Maintenance</span></td>
-              </tr>
-              <tr>
-                <td class="font-mono">DRN-D03</td>
-                <td>Drone</td>
-                <td>Pune Depot</td>
-                <td><span class="badge badge-warning">Idle</span></td>
+              <tr th:each="asset : ${recentFleetAssets}">
+                <td class="font-mono" style="color:var(--accent);" th:text="${asset.identifier}">TRK-000</td>
+                <td th:text="${asset.assetType}">Truck</td>
+                <td>
+                  <span>📍 </span><span th:text="${asset.currentLocation}">Location</span>
+                </td>
+                <td>
+                  <span th:if="${#strings.equalsIgnoreCase(asset.status, 'IDLE')}" class="badge badge-warning">Idle</span>
+                  <span th:if="${#strings.equalsIgnoreCase(asset.status, 'IN_USE') or #strings.equalsIgnoreCase(asset.status, 'ACTIVE')}" class="badge badge-success">In Use</span>
+                  <span th:if="${!#strings.equalsIgnoreCase(asset.status, 'IDLE') and !#strings.equalsIgnoreCase(asset.status, 'IN_USE') and !#strings.equalsIgnoreCase(asset.status, 'ACTIVE')}" class="badge badge-neutral" th:text="${asset.status}">Other</span>
+                </td>
               </tr>
             </tbody>
           </table>
