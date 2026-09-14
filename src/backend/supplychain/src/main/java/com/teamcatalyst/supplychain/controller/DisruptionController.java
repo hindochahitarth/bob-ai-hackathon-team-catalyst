@@ -1,13 +1,17 @@
 package com.teamcatalyst.supplychain.controller;
 
 import com.teamcatalyst.supplychain.model.DisruptionEvent;
+import com.teamcatalyst.supplychain.model.RerouteResult;
 import com.teamcatalyst.supplychain.model.Shipment;
+import com.teamcatalyst.supplychain.repository.ShipmentRepository;
 import com.teamcatalyst.supplychain.service.DisruptionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -19,9 +23,11 @@ import java.util.Optional;
 @Controller
 @RequestMapping("/disruptions")
 @RequiredArgsConstructor
+@Slf4j
 public class DisruptionController {
 
     private final DisruptionService disruptionService;
+    private final ShipmentRepository shipmentRepository;
 
     /** GET /disruptions — list all disruption events */
     @GetMapping
@@ -34,7 +40,7 @@ public class DisruptionController {
         return "disruptions";
     }
 
-    /** GET /disruptions/{id}/impact — detail + affected shipments */
+    /** GET /disruptions/{id}/impact — detail + affected shipments with Dijkstra reroute optimization */
     @GetMapping("/{id}/impact")
     public String impact(@PathVariable Long id,
                          Model model,
@@ -49,16 +55,70 @@ public class DisruptionController {
         DisruptionEvent event = opt.get();
         List<Shipment> affected = disruptionService.findAffectedShipments(event);
 
-        // Build a map of shipment → suggested action for the template
-        Map<Shipment, String> shipmentActions = new LinkedHashMap<>();
+        // Compute Dijkstra-optimized alternate paths for each affected shipment
+        Map<Shipment, RerouteResult> rerouteResults = new LinkedHashMap<>();
         for (Shipment s : affected) {
-            shipmentActions.put(s, disruptionService.suggestAction(event, s));
+            RerouteResult result = disruptionService.suggestReroute(event, s);
+            rerouteResults.put(s, result);
         }
 
+        // Feature sample reroute for the visual comparison card
+        RerouteResult sampleReroute = rerouteResults.values().stream()
+                .filter(RerouteResult::isSuccess)
+                .findFirst()
+                .orElse(null);
+
         model.addAttribute("event", event);
-        model.addAttribute("shipmentActions", shipmentActions);
+        model.addAttribute("rerouteResults", rerouteResults);
+        model.addAttribute("sampleReroute", sampleReroute);
         model.addAttribute("affectedCount", affected.size());
 
         return "disruption-impact";
+    }
+
+    /**
+     * POST /disruptions/{id}/reroute/{shipmentId}
+     * Dispatcher approves Dijkstra-recommended alternate route for a shipment.
+     */
+    @PostMapping("/{id}/reroute/{shipmentId}")
+    public String approveReroute(@PathVariable Long id,
+                                 @PathVariable Long shipmentId,
+                                 RedirectAttributes redirectAttrs) {
+
+        Optional<DisruptionEvent> eventOpt = disruptionService.findById(id);
+        Optional<Shipment> shipmentOpt = shipmentRepository.findById(shipmentId);
+
+        if (eventOpt.isEmpty() || shipmentOpt.isEmpty()) {
+            redirectAttrs.addFlashAttribute("error", "Disruption or Shipment not found.");
+            return "redirect:/disruptions/" + id + "/impact";
+        }
+
+        DisruptionEvent event = eventOpt.get();
+        Shipment shipment = shipmentOpt.get();
+
+        RerouteResult reroute = disruptionService.suggestReroute(event, shipment);
+        if (!reroute.isSuccess()) {
+            redirectAttrs.addFlashAttribute("error", "Cannot approve reroute: " + reroute.getSummary());
+            return "redirect:/disruptions/" + id + "/impact";
+        }
+
+        // Apply reroute update
+        shipment.setStatus("IN_TRANSIT (REROUTED)");
+        if (reroute.getBypassSegment() != null) {
+            shipment.setCurrentLocation("Bypassing via " + reroute.getBypassSegment());
+        }
+
+        shipmentRepository.save(shipment);
+
+        log.info("Dispatcher approved Dijkstra reroute for shipment {} via carrier {}",
+                shipment.getTrackingNumber(), reroute.getRecommendedCarrier());
+
+        redirectAttrs.addFlashAttribute("successMessage", String.format(
+                "✅ Reroute approved for %s! Assigned to %s via %s (+%.0f km).",
+                shipment.getTrackingNumber(), reroute.getRecommendedCarrier(),
+                reroute.getBypassSegment(), reroute.getDeltaKm()
+        ));
+
+        return "redirect:/disruptions/" + id + "/impact";
     }
 }

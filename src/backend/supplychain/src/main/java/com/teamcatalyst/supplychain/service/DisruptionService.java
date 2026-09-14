@@ -1,14 +1,14 @@
 package com.teamcatalyst.supplychain.service;
 
 import com.teamcatalyst.supplychain.model.DisruptionEvent;
+import com.teamcatalyst.supplychain.model.RerouteResult;
 import com.teamcatalyst.supplychain.model.Shipment;
 import com.teamcatalyst.supplychain.repository.DisruptionEventRepository;
 import com.teamcatalyst.supplychain.repository.ShipmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +16,7 @@ public class DisruptionService {
 
     private final DisruptionEventRepository disruptionRepo;
     private final ShipmentRepository shipmentRepo;
+    private final RouteOptimizationService routeOptimizationService;
 
     /** Return all disruption events. */
     public List<DisruptionEvent> findAll() {
@@ -44,15 +45,40 @@ public class DisruptionService {
     }
 
     /**
-     * Simple reroute suggestion based on severity and cargo type.
+     * Calculates an optimal bypass reroute using Dijkstra's shortest-path algorithm
+     * on the commercial logistics graph.
      */
-    public String suggestAction(DisruptionEvent event, Shipment shipment) {
-        String severity = event.getSeverity() == null ? "" : event.getSeverity().toUpperCase();
-        String cargo    = shipment.getCargoType() == null ? "cargo" : shipment.getCargoType();
-        return switch (severity) {
-            case "HIGH"   -> "🚨 Immediately reroute via alternate corridor. Notify carrier for " + cargo + ".";
-            case "MEDIUM" -> "⚠️ Monitor delay; if > 6h, reroute and update ETA for " + cargo + ".";
-            default       -> "ℹ️ Low impact — standard delay buffer applies for " + cargo + ".";
-        };
+    public RerouteResult suggestReroute(DisruptionEvent event, Shipment shipment) {
+        if (shipment.getRoute() == null) {
+            return RerouteResult.builder()
+                    .success(false)
+                    .summary("Shipment has no assigned route.")
+                    .build();
+        }
+
+        String origin = shipment.getRoute().getOrigin();
+        String destination = shipment.getRoute().getDestination();
+        String affected = event.getAffectedSegment();
+
+        Set<String> blockedSegments = new HashSet<>();
+        Set<String> blockedNodes = new HashSet<>();
+
+        if (affected != null && !affected.isBlank()) {
+            String clean = affected.trim().toUpperCase();
+            // Check if affected item is a node or a segment
+            if (clean.endsWith("_PORT") || clean.endsWith("_HUB") || clean.endsWith("_DEPOT")) {
+                blockedNodes.add(clean);
+            } else {
+                blockedSegments.add(clean);
+            }
+        }
+
+        return routeOptimizationService.findOptimalRoute(
+                origin,
+                destination,
+                blockedSegments,
+                blockedNodes,
+                shipment.getCargoType()
+        );
     }
 }
