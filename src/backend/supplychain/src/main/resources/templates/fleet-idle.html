@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Idle Fleet Assets — Supply Chain Assistant</title>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('fleet')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">Idle Fleet Assets</h1>
+        <p class="page-subtitle">
+          <span th:text="${idleCount}">0</span> asset(s) currently idle and available for dispatch
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Summary stat -->
+    <div class="stat-grid stagger mb-8" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); max-width:600px;">
+      <div class="stat-card stat-card--warning">
+        <div class="stat-card__icon">🚛</div>
+        <div class="stat-card__value" th:text="${idleCount}">0</div>
+        <div class="stat-card__label">Idle Assets</div>
+      </div>
+    </div>
+
+    <!-- Fleet Table Card -->
+    <div class="card animate-fade-in-up">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Idle Asset Register</div>
+          <div class="card__subtitle">Assets with status = IDLE awaiting assignment</div>
+        </div>
+        <span class="badge badge-warning" th:text="${idleCount} + ' idle'">0 idle</span>
+      </div>
+
+      <!-- Empty state -->
+      <div th:if="${idleAssets.isEmpty()}" class="empty-state">
+        <div class="empty-state__icon">✅</div>
+        <div class="empty-state__title">No Idle Assets</div>
+        <div class="empty-state__desc">
+          All fleet assets are currently active or in maintenance.
+          No idle units require reassignment at this time.
+        </div>
+        <a href="/dashboard" class="btn btn-secondary btn-sm" style="margin-top: var(--sp-4);">← Back to Dashboard</a>
+      </div>
+
+      <!-- Data table -->
+      <div th:unless="${idleAssets.isEmpty()}" class="table-wrapper">
+        <table class="table" id="idle-fleet-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Asset Type</th>
+              <th>Identifier</th>
+              <th>Current Location</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="asset, stat : ${idleAssets}">
+
+              <!-- Row number -->
+              <td class="text-muted font-mono" th:text="${asset.id}">1</td>
+
+              <!-- Asset Type with icon -->
+              <td>
+                <div class="flex items-center gap-2">
+                  <!-- Icon based on asset type -->
+                  <span style="font-size:18px;" th:switch="${#strings.toUpperCase(asset.assetType)}">
+                    <span th:case="'TRUCK'">🚛</span>
+                    <span th:case="'HEAVY TRUCK'">🚛</span>
+                    <span th:case="'MEDIUM TRUCK'">🚚</span>
+                    <span th:case="'VAN'">🚐</span>
+                    <span th:case="'REFRIGERATED VAN'">🚐</span>
+                    <span th:case="'CONTAINER'">📦</span>
+                    <span th:case="'VESSEL'">🚢</span>
+                    <span th:case="'SHIP'">🚢</span>
+                    <span th:case="'PLANE'">✈️</span>
+                    <span th:case="'AIRCRAFT'">✈️</span>
+                    <span th:case="'DRONE'">🚁</span>
+                    <span th:case="'TRAIN'">🚂</span>
+                    <span th:case="*">🔧</span>
+                  </span>
+                  <span th:text="${asset.assetType}">—</span>
+                </div>
+              </td>
+
+              <!-- Identifier -->
+              <td>
+                <span class="font-mono" style="color:var(--accent);"
+                      th:text="${asset.identifier}">—</span>
+              </td>
+
+              <!-- Current Location -->
+              <td>
+                <span style="display:inline-flex; align-items:center; gap:4px;">
+                  <span style="color:var(--text-muted); font-size:13px;">📍</span>
+                  <span th:text="${asset.currentLocation}">—</span>
+                </span>
+              </td>
+
+              <!-- Status badge — always IDLE on this page -->
+              <td>
+                <span class="badge badge-warning" th:text="${asset.status}">IDLE</span>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="table-footer">
+          <span>
+            <strong th:text="${idleCount}">0</strong> idle asset(s) ready for dispatch
+          </span>
+          <span class="text-muted">Assign to active shipments to optimise utilisation</span>
+        </div>
+      </div><!-- /table-wrapper -->
+
+    </div><!-- /card -->
+
+  </div>
+</div>
+
+</body>
+</html>
