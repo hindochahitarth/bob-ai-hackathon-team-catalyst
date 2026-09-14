@@ -40,9 +40,12 @@ public class OpsController {
 
     @GetMapping
     public String opsBrief(Model model) {
-        model.addAttribute("briefText",   null);
-        model.addAttribute("generated",   false);
-        model.addAttribute("aiGenerated", false);
+        if (!model.containsAttribute("generated")) {
+            model.addAttribute("briefText",   null);
+            model.addAttribute("generated",   false);
+            model.addAttribute("aiGenerated", false);
+            model.addAttribute("stats",       null);
+        }
         return "ops-brief";
     }
 
