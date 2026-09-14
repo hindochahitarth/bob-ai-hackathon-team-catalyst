@@ -54,4 +54,11 @@ public class TrackingController {
 
         return "track";
     }
+
+    /** GET /shipments — full shipments list page */
+    @GetMapping("/shipments")
+    public String allShipments(Model model) {
+        model.addAttribute("shipments", shipmentRepo.findAll());
+        return "shipments";
+    }
 }

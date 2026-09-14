@@ -63,18 +63,21 @@ public class OpsController {
         List<Shipment> allShipments = shipmentRepo.findAll();
         List<DisruptionEvent> disruptions = disruptionRepo.findAll();
 
-        int disruptedShipments = 0;
+        // Disruptions + affected shipments (use Set to avoid double-counting)
+        java.util.Set<Long> disruptedIds = new java.util.HashSet<>();
         List<String> majorSummaries = new ArrayList<>();
 
         for (DisruptionEvent event : disruptions) {
             List<Shipment> affected = disruptionService.findAffectedShipments(event);
-            disruptedShipments += affected.size();
+            affected.forEach(s -> disruptedIds.add(s.getId()));
+
             String sev = event.getSeverity();
             if ("HIGH".equalsIgnoreCase(sev) || "CRITICAL".equalsIgnoreCase(sev)) {
                 majorSummaries.add(event.getType() + " on " + event.getAffectedSegment()
                         + " [" + sev + "] - " + event.getDescription());
             }
         }
+        int disruptedShipments = disruptedIds.size();
 
         int idleFleet = (int) fleetRepo.countByStatus("IDLE");
 
