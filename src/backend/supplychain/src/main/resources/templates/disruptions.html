@@ -50,7 +50,7 @@
 
       <!-- Table -->
       <div th:unless="${disruptions.isEmpty()}" class="table-wrapper">
-        <table class="table" id="disruptions-table">
+        <table class="table disruptions-table" id="disruptions-table">
           <thead>
             <tr>
               <th>#</th>
@@ -84,7 +84,7 @@
               </td>
 
               <!-- Description truncated -->
-              <td style="max-width:280px;">
+              <td>
                 <span class="truncate" th:text="${d.description}">—</span>
               </td>
 
