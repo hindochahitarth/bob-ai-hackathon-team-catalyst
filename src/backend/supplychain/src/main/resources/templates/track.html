@@ -87,22 +87,25 @@
           </div>
           <div class="flex items-center" style="gap:var(--sp-3); flex-wrap:wrap;">
             <!-- Status badge -->
-            <span th:if="${'Delayed'.equalsIgnoreCase(shipment.status)}"
+            <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'Delayed') or #strings.equalsIgnoreCase(shipment.status, 'DELAYED')}"
                   class="badge badge-warning" style="font-size:var(--text-sm); padding: 6px 14px;">
               🕒 DELAYED
             </span>
-            <span th:if="${'In Transit'.equalsIgnoreCase(shipment.status)}"
+            <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'In Transit') or #strings.equalsIgnoreCase(shipment.status, 'IN_TRANSIT')}"
                   class="badge badge-accent" style="font-size:var(--text-sm); padding: 6px 14px;">
               🚚 IN TRANSIT
             </span>
-            <span th:if="${'Delivered'.equalsIgnoreCase(shipment.status)}"
+            <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'Delivered') or #strings.equalsIgnoreCase(shipment.status, 'DELIVERED')}"
                   class="badge badge-success" style="font-size:var(--text-sm); padding: 6px 14px;">
               ✓ DELIVERED
             </span>
             <span th:if="${shipment.status != null
-                           and !('Delayed'.equalsIgnoreCase(shipment.status))
-                           and !('In Transit'.equalsIgnoreCase(shipment.status))
-                           and !('Delivered'.equalsIgnoreCase(shipment.status))}"
+                           and !#strings.equalsIgnoreCase(shipment.status, 'Delayed')
+                           and !#strings.equalsIgnoreCase(shipment.status, 'DELAYED')
+                           and !#strings.equalsIgnoreCase(shipment.status, 'In Transit')
+                           and !#strings.equalsIgnoreCase(shipment.status, 'IN_TRANSIT')
+                           and !#strings.equalsIgnoreCase(shipment.status, 'Delivered')
+                           and !#strings.equalsIgnoreCase(shipment.status, 'DELIVERED')}"
                   class="badge badge-neutral" style="font-size:var(--text-sm); padding: 6px 14px;"
                   th:text="${shipment.status}">—</span>
 

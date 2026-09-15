@@ -44,7 +44,7 @@ public class DataSeeder implements CommandLineRunner {
         Route r3 = new Route(null, "Surat", "Bangalore", "SURAT_HUB,NH48,MUMBAI_BYPASS,PUNE_DEPOT,BANGALORE_RING", 1250.0, "Delhivery Logistics");
         Route r4 = new Route(null, "Kolkata", "Mumbai", "KOLKATA_PORT,NH53,NAGPUR_CROSSING,NASHIK_HUB,MUMBAI_PORT", 1960.0, "Gati-KWE");
         Route r5 = new Route(null, "Delhi", "Bangalore", "DELHI_HUB,NH44,GWALIOR,NAGPUR_CROSSING,HYDERABAD_HUB,BANGALORE_RING", 2150.0, "VRL Logistics");
-        Route r6 = new Route(null, "Ahmedabad", "Kochi", "AHMEDABAD_AIRPORT,NH48,MUMBAI_BYPASS,GOA_COASTAL,KOCHI_PORT", 1780.0, "Safexpress");
+        Route r6 = new Route(null, "Ahmedabad", "Kochi", "AHMEDABAD_HUB,NE1_EXPRESSWAY,SURAT_HUB,NH48,MUMBAI_BYPASS,GOA_COASTAL,KOCHI_PORT", 1780.0, "Safexpress");
 
         List<Route> routes = routeRepository.saveAll(List.of(r1, r2, r3, r4, r5, r6));
         r1 = routes.get(0);
