@@ -66,8 +66,19 @@ public class DisruptionService {
         if (affected != null && !affected.isBlank()) {
             String clean = affected.trim().toUpperCase();
             // Check if affected item is a node or a segment
-            if (clean.endsWith("_PORT") || clean.endsWith("_HUB") || clean.endsWith("_DEPOT")) {
-                blockedNodes.add(clean);
+            if (clean.endsWith("_PORT") || clean.endsWith("_HUB") || clean.endsWith("_DEPOT")
+                    || clean.endsWith("_CORRIDOR") || clean.endsWith("_RING") || clean.endsWith("_CROSSING")) {
+                // Resolve the shipment's origin and destination to graph node IDs
+                String resolvedOrigin = routeOptimizationService.resolveNodeId(origin);
+                String resolvedDest   = routeOptimizationService.resolveNodeId(destination);
+                // Do NOT block the node if it IS the shipment's own origin or destination —
+                // Dijkstra would immediately fail since source/target itself is blocked.
+                // Instead treat it as a segment block so only its connecting edges are avoided.
+                if (clean.equals(resolvedOrigin) || clean.equals(resolvedDest)) {
+                    blockedSegments.add(clean);
+                } else {
+                    blockedNodes.add(clean);
+                }
             } else {
                 blockedSegments.add(clean);
             }
