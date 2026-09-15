@@ -5,12 +5,14 @@ import com.teamcatalyst.supplychain.model.TempReading;
 import com.teamcatalyst.supplychain.repository.ShipmentRepository;
 import com.teamcatalyst.supplychain.repository.TempReadingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ColdChainService {
@@ -50,5 +52,28 @@ public class ColdChainService {
         } else {
             return "Major Breach";
         }
+    }
+
+    /**
+     * Simulates sending a notification to the shipment owner.
+     * Logs the event; in production this would call an email/SMS gateway.
+     *
+     * @param shipment the shipment whose owner should be notified
+     * @param issue    a short description of the issue (e.g. breach status)
+     * @return true if owner contact details are present and notification was "sent"
+     */
+    public boolean notifyOwner(Shipment shipment, String issue) {
+        if (shipment.getOwnerEmail() == null || shipment.getOwnerEmail().isBlank()) {
+            log.warn("Cannot notify owner for shipment {} — no contact details on record.",
+                    shipment.getTrackingNumber());
+            return false;
+        }
+        log.info("[NOTIFY] Shipment: {} | Issue: {} | Owner: {} <{}> {} — notification dispatched.",
+                shipment.getTrackingNumber(),
+                issue,
+                shipment.getOwnerName(),
+                shipment.getOwnerEmail(),
+                shipment.getOwnerPhone());
+        return true;
     }
 }

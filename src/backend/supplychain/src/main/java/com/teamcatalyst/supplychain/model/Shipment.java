@@ -26,4 +26,9 @@ public class Shipment {
 
     private String status;
     private String currentLocation;
+
+    /** Shipment owner contact details for notifications */
+    private String ownerName;
+    private String ownerEmail;
+    private String ownerPhone;
 }
