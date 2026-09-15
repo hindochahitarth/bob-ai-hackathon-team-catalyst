@@ -67,24 +67,24 @@ public class DataSeeder implements CommandLineRunner {
         disruptionEventRepository.saveAll(List.of(d1, d2, d3, d4));
 
         // 3. Seed Shipments (18 shipments across routes)
-        Shipment s1  = new Shipment(null, "TRK-00421", "Pharmaceuticals", true,  r1, "IN_TRANSIT", "Surat Hub");
-        Shipment s2  = new Shipment(null, "TRK-00422", "Electronics",     false, r1, "DELAYED",    "NH48 Vadodara");
-        Shipment s3  = new Shipment(null, "TRK-00423", "Textiles",        false, r1, "DELIVERED",  "Delhi Hub");
-        Shipment s4  = new Shipment(null, "TRK-00424", "Automotive Parts",false, r2, "IN_TRANSIT", "Bangalore Ring");
-        Shipment s5  = new Shipment(null, "TRK-00425", "Perishables",     true,  r2, "IN_TRANSIT", "Hosur");
-        Shipment s6  = new Shipment(null, "TRK-00426", "Electronics",     false, r2, "DELAYED",    "NH48 Near Pune");
-        Shipment s7  = new Shipment(null, "TRK-00427", "Pharmaceuticals", true,  r3, "DELAYED",    "Pune Depot");
-        Shipment s8  = new Shipment(null, "TRK-00428", "Textiles",        false, r3, "IN_TRANSIT", "Mumbai Bypass");
-        Shipment s9  = new Shipment(null, "TRK-00429", "Electronics",     false, r3, "DELIVERED",  "Bangalore Ring");
-        Shipment s10 = new Shipment(null, "TRK-00430", "Perishables",     true,  r4, "IN_TRANSIT", "Nagpur Crossing");
-        Shipment s11 = new Shipment(null, "TRK-00431", "Textiles",        false, r4, "IN_TRANSIT", "Nashik Hub");
-        Shipment s12 = new Shipment(null, "TRK-00432", "Heavy Machinery", false, r4, "DELAYED",    "Kolkata Port");
-        Shipment s13 = new Shipment(null, "TRK-00433", "Pharmaceuticals", true,  r5, "IN_TRANSIT", "Gwalior");
-        Shipment s14 = new Shipment(null, "TRK-00434", "Electronics",     false, r5, "IN_TRANSIT", "Hyderabad Hub");
-        Shipment s15 = new Shipment(null, "TRK-00435", "FMCG",            false, r5, "DELIVERED",  "Bangalore Ring");
-        Shipment s16 = new Shipment(null, "TRK-00436", "Vaccines",        true,  r6, "DELAYED",    "Goa Coastal");
-        Shipment s17 = new Shipment(null, "TRK-00437", "Fresh Seafood",   true,  r6, "IN_TRANSIT", "Mumbai Bypass");
-        Shipment s18 = new Shipment(null, "TRK-00438", "Textiles",        false, r6, "DELIVERED",  "Kochi Port");
+        Shipment s1  = new Shipment(null, "TRK-00421", "Pharmaceuticals", true,  r1, "IN_TRANSIT", "Surat Hub",        "Dr. Ananya Sharma", "ananya.sharma@pharmalogix.in",  "+91-98201-11234");
+        Shipment s2  = new Shipment(null, "TRK-00422", "Electronics",     false, r1, "DELAYED",    "NH48 Vadodara",    null, null, null);
+        Shipment s3  = new Shipment(null, "TRK-00423", "Textiles",        false, r1, "DELIVERED",  "Delhi Hub",        null, null, null);
+        Shipment s4  = new Shipment(null, "TRK-00424", "Automotive Parts",false, r2, "IN_TRANSIT", "Bangalore Ring",   null, null, null);
+        Shipment s5  = new Shipment(null, "TRK-00425", "Perishables",     true,  r2, "IN_TRANSIT", "Hosur",            "Meena Krishnan",     "meena.krishnan@freshhaul.in",   "+91-44100-22345");
+        Shipment s6  = new Shipment(null, "TRK-00426", "Electronics",     false, r2, "DELAYED",    "NH48 Near Pune",   null, null, null);
+        Shipment s7  = new Shipment(null, "TRK-00427", "Pharmaceuticals", true,  r3, "DELAYED",    "Pune Depot",       "Vikram Joshi",       "vikram.joshi@medcargo.in",      "+91-20900-44567");
+        Shipment s8  = new Shipment(null, "TRK-00428", "Textiles",        false, r3, "IN_TRANSIT", "Mumbai Bypass",    null, null, null);
+        Shipment s9  = new Shipment(null, "TRK-00429", "Electronics",     false, r3, "DELIVERED",  "Bangalore Ring",   null, null, null);
+        Shipment s10 = new Shipment(null, "TRK-00430", "Perishables",     true,  r4, "IN_TRANSIT", "Nagpur Crossing",  "Sonal Mehta",        "sonal.mehta@coldhub.in",        "+91-71200-66789");
+        Shipment s11 = new Shipment(null, "TRK-00431", "Textiles",        false, r4, "IN_TRANSIT", "Nashik Hub",       null, null, null);
+        Shipment s12 = new Shipment(null, "TRK-00432", "Heavy Machinery", false, r4, "DELAYED",    "Kolkata Port",     null, null, null);
+        Shipment s13 = new Shipment(null, "TRK-00433", "Pharmaceuticals", true,  r5, "IN_TRANSIT", "Gwalior",          "Dr. Pradeep Nair",   "pradeep.nair@lifesciences.in",  "+91-11300-55890");
+        Shipment s14 = new Shipment(null, "TRK-00434", "Electronics",     false, r5, "IN_TRANSIT", "Hyderabad Hub",    null, null, null);
+        Shipment s15 = new Shipment(null, "TRK-00435", "FMCG",            false, r5, "DELIVERED",  "Bangalore Ring",   null, null, null);
+        Shipment s16 = new Shipment(null, "TRK-00436", "Vaccines",        true,  r6, "DELAYED",    "Goa Coastal",      "Kavitha Pillai",     "kavitha.pillai@vaccinex.in",    "+91-48400-33901");
+        Shipment s17 = new Shipment(null, "TRK-00437", "Fresh Seafood",   true,  r6, "IN_TRANSIT", "Mumbai Bypass",    "Arjun Shetty",       "arjun.shetty@seafreshtrans.in", "+91-22500-11456");
+        Shipment s18 = new Shipment(null, "TRK-00438", "Textiles",        false, r6, "DELIVERED",  "Kochi Port",       null, null, null);
 
         List<Shipment> shipments = shipmentRepository.saveAll(List.of(
                 s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18
