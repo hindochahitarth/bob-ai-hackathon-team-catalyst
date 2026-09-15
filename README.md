@@ -156,14 +156,14 @@ bob-ai-hackathon-team-catalyst/
 
 ## Demo
 
-| Artifact | Link |
-|---|---|
+| Artifact | Link                                                     |
+|---|----------------------------------------------------------|
+| Live Demo | [Open Live Demo](https://supplychain-catalyst-production.up.railway.app/dashboard)                                       |
 | Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
-| Screenshots | [See demo/screenshots/](demo/screenshots/) |
-| Presentation | [See presentation/](presentation/) |
+| Screenshots | [See demo/screenshots/](demo/screenshots/)               |
+| Presentation | [See presentation/](presentation/)                       |
 
 ---
-
 ## Known Limitations
 
 - Uses an in-memory H2 database with seeded sample data rather than live shipment/sensor feeds
