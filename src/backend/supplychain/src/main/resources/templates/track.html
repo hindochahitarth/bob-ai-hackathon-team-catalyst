@@ -1,498 +1,428 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head>
-  <th:block th:replace="~{fragments/navbar :: head}"></th:block>
+<head th:replace="~{fragments/navbar :: head}">
   <title>Track Shipment — Supply Chain Assistant</title>
-  <style>
-    /* ── Page-specific styles ────────────────────────── */
-
-    /* Hero search area */
-    .track-hero {
-      padding: var(--sp-12) var(--sp-6) var(--sp-8);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--sp-4);
-    }
-
-    .track-hero__icon {
-      font-size: 48px;
-      line-height: 1;
-      filter: drop-shadow(0 0 20px rgba(59,130,246,0.4));
-    }
-
-    .track-hero__title {
-      font-size: var(--text-3xl);
-      font-weight: 800;
-      color: var(--text-primary);
-      letter-spacing: -1px;
-      line-height: 1.15;
-    }
-
-    .track-hero__subtitle {
-      font-size: var(--text-md);
-      color: var(--text-secondary);
-      max-width: 440px;
-      line-height: 1.6;
-    }
-
-    /* Search bar */
-    .track-search-form {
-      display: flex;
-      gap: var(--sp-3);
-      width: 100%;
-      max-width: 560px;
-    }
-
-    .track-search-input {
-      flex: 1;
-      background: var(--bg-surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-lg);
-      color: var(--text-primary);
-      font-family: var(--font-mono);
-      font-size: var(--text-md);
-      font-weight: 500;
-      padding: var(--sp-4) var(--sp-5);
-      outline: none;
-      letter-spacing: 0.3px;
-      transition: border-color var(--duration-fast) var(--ease),
-                  box-shadow   var(--duration-fast) var(--ease);
-    }
-
-    .track-search-input::placeholder {
-      color: var(--text-muted);
-      font-family: var(--font-family);
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    .track-search-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 4px var(--accent-subtle);
-    }
-
-    .track-search-btn {
-      padding: var(--sp-4) var(--sp-6);
-      font-size: var(--text-md);
-      font-weight: 600;
-      border-radius: var(--radius-lg);
-      white-space: nowrap;
-      box-shadow: var(--shadow-accent);
-    }
-
-    /* Result card */
-    .result-card {
-      max-width: 720px;
-      margin: 0 auto var(--sp-8);
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow-lg);
-      animation: fade-in-up var(--duration-slow) var(--ease) forwards;
-    }
-
-    /* Result header strip */
-    .result-card__header {
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border);
-      padding: var(--sp-5) var(--sp-6);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--sp-4);
-      flex-wrap: wrap;
-    }
-
-    .result-card__tracking {
-      font-family: var(--font-mono);
-      font-size: var(--text-lg);
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 0.5px;
-    }
-
-    .result-card__body {
-      padding: var(--sp-6);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--sp-4);
-    }
-
-    .result-field {
-      background: var(--bg-base);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      padding: var(--sp-4);
-    }
-
-    .result-field__label {
-      font-size: var(--text-xs);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-muted);
-      margin-bottom: var(--sp-2);
-    }
-
-    .result-field__value {
-      font-size: var(--text-base);
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    /* Timeline progress bar */
-    .track-progress {
-      padding: var(--sp-5) var(--sp-6);
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .track-progress__label {
-      font-size: var(--text-xs);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-muted);
-      margin-bottom: var(--sp-4);
-    }
-
-    .track-steps {
-      display: flex;
-      align-items: center;
-      gap: 0;
-    }
-
-    .track-step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--sp-2);
-      flex: 1;
-      position: relative;
-    }
-
-    .track-step__dot {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--bg-elevated);
-      border: 2px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      z-index: 1;
-      transition: all var(--duration) var(--ease);
-    }
-
-    .track-step--done .track-step__dot,
-    .track-step.done  .track-step__dot {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    .track-step--active .track-step__dot,
-    .track-step.active  .track-step__dot {
-      background: var(--success);
-      border-color: var(--success);
-      color: #fff;
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.2);
-    }
-
-    .track-step__label {
-      font-size: var(--text-xs);
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.3;
-    }
-
-    .track-step--done  .track-step__label,
-    .track-step.done   .track-step__label,
-    .track-step--active .track-step__label,
-    .track-step.active  .track-step__label { color: var(--text-secondary); }
-
-    .track-step__line,
-    .track-step-line {
-      flex: 1;
-      height: 2px;
-      background: var(--border);
-      margin-top: -16px;
-    }
-    .track-step__line--done,
-    .track-step-line.done { background: var(--accent); }
-
-    /* Not-found / idle states */
-    .track-state {
-      max-width: 480px;
-      margin: 0 auto var(--sp-8);
-      text-align: center;
-      padding: var(--sp-10) var(--sp-6);
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow);
-      animation: fade-in-up var(--duration-slow) var(--ease) forwards;
-    }
-
-    .track-state__icon { font-size: 48px; margin-bottom: var(--sp-4); }
-    .track-state__title {
-      font-size: var(--text-xl);
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: var(--sp-3);
-    }
-    .track-state__desc {
-      font-size: var(--text-sm);
-      color: var(--text-secondary);
-      line-height: 1.7;
-    }
-
-    @media (max-width: 600px) {
-      .result-card__body { grid-template-columns: 1fr; }
-      .track-search-form { flex-direction: column; }
-      .track-hero__title { font-size: var(--text-2xl); }
-    }
-  </style>
 </head>
 <body>
 
 <nav th:replace="~{fragments/navbar :: navbar('track')}"></nav>
 
 <div class="page-wrapper">
+  <div class="container">
 
-  <!-- ── Hero Search Area ─────────────────────────────── -->
-  <div class="track-hero animate-fade-in">
-    <div class="track-hero__icon">🔍</div>
-    <h1 class="track-hero__title">Track Your Shipment</h1>
-    <p class="track-hero__subtitle">
-      Enter your tracking number to see live status, location,
-      and cold chain temperature in real time.
-    </p>
+    <!-- Page Header -->
+    <div class="page-header flex items-center justify-between">
+      <div>
+        <h1 class="page-title">🔍 Track Shipment</h1>
+        <p class="page-subtitle">Enter a tracking number to view shipment details</p>
+      </div>
+      <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    </div>
 
-    <!-- Search form -->
-    <form th:action="@{/track}" method="get" class="track-search-form" id="track-search-form">
-      <input type="text"
-             id="tracking-number-input"
-             name="trackingNumber"
-             class="track-search-input"
-             placeholder="e.g. TRK-00421"
-             th:value="${trackingNumber}"
-             autocomplete="off"
-             spellcheck="false"
-             aria-label="Tracking number" />
-      <button type="submit" class="btn btn-primary track-search-btn" id="track-submit-btn">
-        Track →
-      </button>
-    </form>
-  </div>
-
-  <div class="container" style="max-width:800px;">
-
-    <!-- ─── NOT SEARCHED YET — idle state ──────────────── -->
-    <div th:unless="${searched}" class="track-state">
-      <div class="track-state__icon">📦</div>
-      <div class="track-state__title">Ready to Track</div>
-      <div class="track-state__desc">
-        Enter a shipment tracking number above to view real-time status,
-        current location, route details, and temperature readings for
-        cold-chain loads.
+    <!-- Flash: success notification banner -->
+    <div th:if="${notifySuccess}"
+         class="alert alert-success animate-fade-in"
+         style="margin-bottom: var(--sp-6);">
+      <span class="alert-icon">✅</span>
+      <div class="alert-text">
+        <div class="alert-title">Notification Sent</div>
+        <div th:text="${notifySuccess}"></div>
       </div>
     </div>
 
-    <!-- ─── SEARCHED + NOT FOUND ───────────────────────── -->
-    <div th:if="${searched and !found}" class="track-state">
-      <div class="track-state__icon">🤔</div>
-      <div class="track-state__title">Shipment Not Found</div>
-      <div class="track-state__desc">
-        We couldn't find a shipment with tracking number
-        <strong th:text="'&quot;' + ${trackingNumber} + '&quot;'">"—"</strong>.<br/><br/>
-        Please double-check the number and try again, or contact your
-        logistics partner for assistance.
+    <!-- Flash: error notification banner -->
+    <div th:if="${notifyError}"
+         class="alert alert-danger animate-fade-in"
+         style="margin-bottom: var(--sp-6);">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-text">
+        <div class="alert-title">Notification Failed</div>
+        <div th:text="${notifyError}"></div>
       </div>
-      <a href="/track" class="btn btn-secondary btn-sm" style="margin-top:var(--sp-5);">
-        Try another number
-      </a>
     </div>
 
-    <!-- ─── SEARCHED + FOUND ────────────────────────────── -->
-    <div th:if="${searched and found}" class="result-card">
-
-      <!-- Header -->
-      <div class="result-card__header">
-        <div>
-          <div style="font-size:var(--text-xs); color:var(--text-muted);
-                      text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px;">
-            Tracking Number
-          </div>
-          <div class="result-card__tracking" th:text="${shipment.trackingNumber}">—</div>
+    <!-- ── Search form ──────────────────────────────────────────── -->
+    <div class="card animate-fade-in-up" style="margin-bottom: var(--sp-6);">
+      <form method="get" action="/track"
+            style="display:flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex:1; min-width: 220px;">
+          <label class="form-label" for="trackingNumber">Tracking Number</label>
+          <input id="trackingNumber"
+                 type="text"
+                 name="trackingNumber"
+                 class="form-input"
+                 placeholder="e.g. TRK-00421"
+                 autocomplete="off"
+                 th:value="${trackingNumber}">
         </div>
-        <!-- Status badge -->
-        <div>
-          <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'In Transit')
-                         or #strings.equalsIgnoreCase(shipment.status, 'IN_TRANSIT')}"
-                class="badge badge-success"
-                style="font-size:var(--text-sm); padding:6px 14px;"
-                th:text="${shipment.status}">In Transit</span>
-          <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'Delayed')
-                         or #strings.equalsIgnoreCase(shipment.status, 'DELAYED')}"
-                class="badge badge-warning"
-                style="font-size:var(--text-sm); padding:6px 14px;"
-                th:text="${shipment.status}">Delayed</span>
-          <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'Critical')
-                         or #strings.equalsIgnoreCase(shipment.status, 'CRITICAL')}"
-                class="badge badge-live"
-                style="font-size:var(--text-sm); padding:6px 14px;"
-                th:text="${shipment.status}">Critical</span>
-          <span th:if="${#strings.equalsIgnoreCase(shipment.status, 'Delivered')
-                         or #strings.equalsIgnoreCase(shipment.status, 'DELIVERED')}"
-                class="badge badge-accent"
-                style="font-size:var(--text-sm); padding:6px 14px;"
-                th:text="${shipment.status}">Delivered</span>
-          <span th:if="${shipment.status == null or (
-                          !#strings.equalsIgnoreCase(shipment.status,'In Transit') and
-                          !#strings.equalsIgnoreCase(shipment.status,'IN_TRANSIT') and
-                          !#strings.equalsIgnoreCase(shipment.status,'Delayed') and
-                          !#strings.equalsIgnoreCase(shipment.status,'DELAYED') and
-                          !#strings.equalsIgnoreCase(shipment.status,'Critical') and
-                          !#strings.equalsIgnoreCase(shipment.status,'CRITICAL') and
-                          !#strings.equalsIgnoreCase(shipment.status,'Delivered') and
-                          !#strings.equalsIgnoreCase(shipment.status,'DELIVERED'))}"
-                class="badge badge-neutral"
-                style="font-size:var(--text-sm); padding:6px 14px;"
-                th:text="${shipment.status}">—</span>
+        <button type="submit" class="btn btn-primary" style="height: 36px;">
+          🔍 Track
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Not found state ──────────────────────────────────────── -->
+    <div th:if="${notFound}" class="card animate-fade-in-up">
+      <div class="empty-state">
+        <div class="empty-state__icon">📦</div>
+        <div class="empty-state__title">Shipment Not Found</div>
+        <div class="empty-state__desc">
+          No shipment found with tracking number
+          <strong th:text="${trackingNumber}" style="color:var(--accent);"></strong>.
+          Please check the number and try again.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Shipment detail card ──────────────────────────────────── -->
+    <div th:if="${shipment != null}" class="animate-fade-in-up">
+
+      <!-- Header bar with tracking number + status badge -->
+      <div class="card" style="margin-bottom: var(--sp-4); padding: var(--sp-5) var(--sp-6);">
+        <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:var(--sp-3);">
+          <div>
+            <div class="form-label" style="margin-bottom: 4px;">TRACKING NUMBER</div>
+            <div class="font-mono" style="font-size: var(--text-xl); color: var(--accent); font-weight:700;"
+                 th:text="${shipment.trackingNumber}">—</div>
+          </div>
+          <div class="flex items-center" style="gap:var(--sp-3); flex-wrap:wrap;">
+            <!-- Status badge -->
+            <span th:if="${'Delayed'.equalsIgnoreCase(shipment.status)}"
+                  class="badge badge-warning" style="font-size:var(--text-sm); padding: 6px 14px;">
+              🕒 DELAYED
+            </span>
+            <span th:if="${'In Transit'.equalsIgnoreCase(shipment.status)}"
+                  class="badge badge-accent" style="font-size:var(--text-sm); padding: 6px 14px;">
+              🚚 IN TRANSIT
+            </span>
+            <span th:if="${'Delivered'.equalsIgnoreCase(shipment.status)}"
+                  class="badge badge-success" style="font-size:var(--text-sm); padding: 6px 14px;">
+              ✓ DELIVERED
+            </span>
+            <span th:if="${shipment.status != null
+                           and !('Delayed'.equalsIgnoreCase(shipment.status))
+                           and !('In Transit'.equalsIgnoreCase(shipment.status))
+                           and !('Delivered'.equalsIgnoreCase(shipment.status))}"
+                  class="badge badge-neutral" style="font-size:var(--text-sm); padding: 6px 14px;"
+                  th:text="${shipment.status}">—</span>
+
+            <!-- Notify Owner button — shown for delayed or breach shipments -->
+            <button th:if="${showNotify}"
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="openTrackNotifyModal()">
+              🔔 Notify Owner
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Details grid -->
-      <div class="result-card__body">
+      <!-- Detail fields grid -->
+      <div class="grid grid-2" style="gap: var(--sp-4); margin-bottom: var(--sp-4);">
 
-        <div class="result-field">
-          <div class="result-field__label">Cargo Type</div>
-          <div class="result-field__value" th:text="${shipment.cargoType}">—</div>
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);">
+          <div class="form-label" style="margin-bottom: 4px;">CARGO TYPE</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);"
+               th:text="${shipment.cargoType != null ? shipment.cargoType : '—'}">—</div>
         </div>
 
-        <div class="result-field">
-          <div class="result-field__label">Current Location</div>
-          <div class="result-field__value">
-            📍 <span th:text="${shipment.currentLocation}">—</span>
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);">
+          <div class="form-label" style="margin-bottom: 4px;">CURRENT LOCATION</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);">
+            📍 <span th:text="${shipment.currentLocation != null ? shipment.currentLocation : '—'}">—</span>
           </div>
         </div>
 
-        <div class="result-field" th:if="${shipment.route != null}">
-          <div class="result-field__label">Origin</div>
-          <div class="result-field__value" th:text="${shipment.route.origin}">—</div>
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);" th:if="${shipment.route != null}">
+          <div class="form-label" style="margin-bottom: 4px;">ORIGIN</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);"
+               th:text="${shipment.route.origin}">—</div>
         </div>
 
-        <div class="result-field" th:if="${shipment.route != null}">
-          <div class="result-field__label">Destination</div>
-          <div class="result-field__value" th:text="${shipment.route.destination}">—</div>
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);" th:if="${shipment.route != null}">
+          <div class="form-label" style="margin-bottom: 4px;">DESTINATION</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);"
+               th:text="${shipment.route.destination}">—</div>
         </div>
 
-        <div class="result-field" th:if="${shipment.route != null}">
-          <div class="result-field__label">Carrier</div>
-          <div class="result-field__value" th:text="${shipment.route.carrier}">—</div>
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);" th:if="${shipment.route != null}">
+          <div class="form-label" style="margin-bottom: 4px;">CARRIER</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);"
+               th:text="${shipment.route.carrier != null ? shipment.route.carrier : '—'}">—</div>
         </div>
 
-        <div class="result-field" th:if="${shipment.route != null}">
-          <div class="result-field__label">Distance</div>
-          <div class="result-field__value"
+        <div class="card" style="padding: var(--sp-4) var(--sp-5);" th:if="${shipment.route != null}">
+          <div class="form-label" style="margin-bottom: 4px;">DISTANCE</div>
+          <div style="font-size: var(--text-base); color: var(--text-primary);"
                th:text="${#numbers.formatDecimal(shipment.route.distanceKm, 1, 0)} + ' km'">—</div>
         </div>
 
-        <!-- Cold chain tile — full width -->
-        <div class="result-field"
-             th:if="${shipment.coldChain}"
-             style="grid-column: 1 / -1; border-color: rgba(6,182,212,0.3);
-                    background: rgba(6,182,212,0.06);">
-          <div class="result-field__label" style="color:var(--info);">❄️ Cold Chain</div>
-          <div th:if="${latestTemp != null}">
-            <div style="display:flex; align-items:center; gap:var(--sp-4); flex-wrap:wrap;">
-              <div>
-                <span style="font-size:var(--text-2xl); font-weight:800;"
-                      th:style="${breachStatus == 'Major Breach'} ? 'color:var(--danger)' :
-                                 (${breachStatus == 'Minor Breach'} ? 'color:var(--warning)' :
-                                 'color:var(--success)')"
-                      th:text="${#numbers.formatDecimal(latestTemp.temperatureCelsius, 1, 1)} + ' °C'">
-                  —
-                </span>
-              </div>
-              <div>
-                <span th:if="${breachStatus == 'Normal'}"       class="badge badge-success">✓ Normal Range</span>
-                <span th:if="${breachStatus == 'Minor Breach'}" class="badge badge-warning">⚠ Minor Breach</span>
-                <span th:if="${breachStatus == 'Major Breach'}" class="badge badge-live">🚨 Major Breach</span>
-              </div>
-              <div class="text-muted" style="font-size:var(--text-xs);">
-                Recorded:
-                <span th:text="${#temporals.format(latestTemp.recordedAt, 'dd MMM yyyy, HH:mm')}">—</span>
-              </div>
+      </div>
+
+      <!-- Cold chain section — shown only if coldChain = true -->
+      <div th:if="${shipment.coldChain}"
+           class="card"
+           style="margin-bottom: var(--sp-4);
+                  border-color: rgba(6,182,212,0.3);
+                  background: rgba(6,182,212,0.04);">
+        <div class="flex items-center" style="gap: var(--sp-2); margin-bottom: var(--sp-3);">
+          <span style="color: var(--info); font-size: var(--text-sm); font-weight:600;
+                       text-transform:uppercase; letter-spacing:0.5px;">❄ COLD CHAIN</span>
+        </div>
+
+        <div th:if="${tempReading != null}" class="flex items-center" style="gap: var(--sp-4); flex-wrap:wrap;">
+          <!-- Temperature value -->
+          <div>
+            <span th:style="${breachStatus == 'Major Breach'} ? 'color:var(--danger); font-size:var(--text-xl); font-weight:700;' :
+                              (${breachStatus == 'Minor Breach'} ? 'color:var(--warning); font-size:var(--text-xl); font-weight:700;' :
+                              'color:var(--success); font-size:var(--text-xl); font-weight:700;')"
+                  th:text="${#numbers.formatDecimal(tempReading.temperatureCelsius, 1, 1)} + ' °C'">—</span>
+          </div>
+
+          <!-- Breach badge -->
+          <div>
+            <span th:if="${breachStatus == 'Normal'}" class="badge badge-success">✓ Normal</span>
+            <span th:if="${breachStatus == 'Minor Breach'}" class="badge badge-warning">⚠ Minor Breach</span>
+            <span th:if="${breachStatus == 'Major Breach'}" class="badge badge-live">🚨 Major Breach</span>
+          </div>
+
+          <!-- Recorded at -->
+          <div class="text-muted" style="font-size: var(--text-xs);">
+            Recorded:
+            <span th:text="${#temporals.format(tempReading.recordedAt, 'dd MMM yyyy, HH:mm')}">—</span>
+          </div>
+        </div>
+
+        <div th:unless="${tempReading != null}" class="text-muted" style="font-size: var(--text-sm);">
+          No temperature readings available yet.
+        </div>
+      </div>
+
+      <!-- Journey timeline -->
+      <div class="card" style="margin-bottom: var(--sp-4);">
+        <div class="form-label" style="margin-bottom: var(--sp-4);">SHIPMENT JOURNEY</div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--sp-2);">
+
+          <!-- Step 1: Order Placed -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap: var(--sp-2); flex:1;">
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--accent);
+                        display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <polyline points="20 6 9 17 4 12" stroke="#fff" stroke-width="2.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </div>
+            <span style="font-size:var(--text-xs); color:var(--text-secondary); text-align:center;">Order<br>Placed</span>
           </div>
-          <div th:unless="${latestTemp != null}" class="text-muted" style="font-size:var(--text-sm);">
-            ❄️ Cold chain monitored — no temperature readings yet.
+
+          <!-- Connector -->
+          <div style="flex:1; height:2px; background:var(--accent); margin-bottom:22px;"></div>
+
+          <!-- Step 2: Picked Up -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap: var(--sp-2); flex:1;">
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--accent);
+                        display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <polyline points="20 6 9 17 4 12" stroke="#fff" stroke-width="2.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span style="font-size:var(--text-xs); color:var(--text-secondary); text-align:center;">Picked<br>Up</span>
           </div>
+
+          <!-- Connector — solid if in transit or delivered, dashed if delayed -->
+          <div th:style="${'Delayed'.equalsIgnoreCase(shipment.status)} ?
+                          'flex:1; height:2px; background: repeating-linear-gradient(90deg, var(--warning) 0, var(--warning) 6px, transparent 6px, transparent 12px); margin-bottom:22px;' :
+                          'flex:1; height:2px; background:var(--accent); margin-bottom:22px;'">
+          </div>
+
+          <!-- Step 3: In Transit -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap: var(--sp-2); flex:1;">
+            <div th:style="${'Delivered'.equalsIgnoreCase(shipment.status)} ?
+                            'width:36px; height:36px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;' :
+                            'width:36px; height:36px; border-radius:50%; background:var(--success); border:2px solid var(--success); display:flex; align-items:center; justify-content:center; flex-shrink:0;'">
+              <!-- Arrow for in-transit, check for delivered -->
+              <svg th:if="${!'Delivered'.equalsIgnoreCase(shipment.status)}"
+                   width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <line x1="5" y1="12" x2="19" y2="12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+                <polyline points="12 5 19 12 12 19" stroke="#fff" stroke-width="2.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <svg th:if="${'Delivered'.equalsIgnoreCase(shipment.status)}"
+                   width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <polyline points="20 6 9 17 4 12" stroke="#fff" stroke-width="2.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span style="font-size:var(--text-xs); color:var(--text-secondary); text-align:center;">In<br>Transit</span>
+          </div>
+
+          <!-- Connector — greyed out unless delivered -->
+          <div th:style="${'Delivered'.equalsIgnoreCase(shipment.status)} ?
+                          'flex:1; height:2px; background:var(--accent); margin-bottom:22px;' :
+                          'flex:1; height:2px; background:var(--border); margin-bottom:22px;'">
+          </div>
+
+          <!-- Step 4: Delivered -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap: var(--sp-2); flex:1;">
+            <div th:style="${'Delivered'.equalsIgnoreCase(shipment.status)} ?
+                            'width:36px; height:36px; border-radius:50%; background:var(--success); display:flex; align-items:center; justify-content:center; flex-shrink:0;' :
+                            'width:36px; height:36px; border-radius:50%; background:var(--bg-elevated); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0;'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4"
+                        th:attr="fill=${!'Delivered'.equalsIgnoreCase(shipment.status)} ? 'var(--text-muted)' : '#fff'"/>
+              </svg>
+            </div>
+            <span style="font-size:var(--text-xs); color:var(--text-secondary); text-align:center;">Delivered</span>
+          </div>
+
         </div>
+      </div>
 
-        <div class="result-field" th:unless="${shipment.coldChain}"
-             style="grid-column: 1 / -1;">
-          <div class="result-field__label">Cold Chain</div>
-          <div class="result-field__value">
-            <span class="badge badge-neutral">Not Required</span>
-          </div>
+    </div><!-- /shipment detail -->
+
+    <!-- ── Empty landing state (no search yet) ──────────────────── -->
+    <div th:if="${trackingNumber == null or trackingNumber.isBlank()}"
+         class="card animate-fade-in-up">
+      <div class="empty-state">
+        <div class="empty-state__icon">🔍</div>
+        <div class="empty-state__title">Enter a Tracking Number</div>
+        <div class="empty-state__desc">
+          Type a tracking number above (e.g. <strong style="color:var(--accent);">TRK-00421</strong>)
+          to view real-time shipment details, temperature status, and route information.
         </div>
-
-      </div><!-- /body grid -->
-
-      <!-- ── Shipment Progress Timeline ─────────── -->
-      <div class="track-progress">
-        <div class="track-progress__label">Shipment Journey</div>
-        <div class="track-steps">
-
-          <!-- Order Placed -->
-          <div class="track-step done">
-            <div class="track-step__dot">✓</div>
-            <div class="track-step__label">Order<br/>Placed</div>
-          </div>
-
-          <div class="track-step-line done"></div>
-
-          <!-- Picked Up -->
-          <div class="track-step done">
-            <div class="track-step__dot">✓</div>
-            <div class="track-step__label">Picked<br/>Up</div>
-          </div>
-
-          <!-- Connecting line Picked Up -> In Transit -->
-          <div class="track-step-line"
-               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'transit') or #strings.containsIgnoreCase(shipment.status, 'delayed') or #strings.containsIgnoreCase(shipment.status, 'critical') or #strings.containsIgnoreCase(shipment.status, 'rerouted') or #strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''"></div>
-
-          <!-- In Transit Step -->
-          <div class="track-step"
-               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : (${#strings.containsIgnoreCase(shipment.status, 'transit') or #strings.containsIgnoreCase(shipment.status, 'delayed') or #strings.containsIgnoreCase(shipment.status, 'critical') or #strings.containsIgnoreCase(shipment.status, 'rerouted')} ? 'active' : '')">
-            <div class="track-step__dot" th:text="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? '✓' : '→'">→</div>
-            <div class="track-step__label">In<br/>Transit</div>
-          </div>
-
-          <!-- Connecting line In Transit -> Delivered -->
-          <div class="track-step-line"
-               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''"></div>
-
-          <!-- Delivered Step -->
-          <div class="track-step"
-               th:classappend="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? 'done' : ''">
-            <div class="track-step__dot" th:text="${#strings.containsIgnoreCase(shipment.status, 'delivered')} ? '✓' : '○'">○</div>
-            <div class="track-step__label">Delivered</div>
-          </div>
-
-        </div>
-      </div><!-- /track-progress -->
-
-    </div><!-- /result-card -->
+      </div>
+    </div>
 
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Notify Owner Modal (shown when showNotify = true)
+     ═══════════════════════════════════════════════════════════════ -->
+<div th:if="${showNotify}"
+     id="track-notify-modal"
+     class="modal-backdrop"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Notify shipment owner">
+
+  <div class="modal-panel">
+
+    <div class="modal-header">
+      <div class="modal-title">🔔 Notify Shipment Owner</div>
+      <button type="button" class="modal-close" onclick="closeTrackNotifyModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="modal-field">
+        <div class="modal-field__label">Shipment Number</div>
+        <div class="modal-field__value font-mono" th:text="${shipment.trackingNumber}">—</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-field__label">Issue</div>
+        <div>
+          <span th:if="${breachStatus == 'Major Breach'}" class="badge badge-live">🚨 Major Breach</span>
+          <span th:if="${breachStatus == 'Minor Breach'}" class="badge badge-warning">⚠ Minor Breach</span>
+          <span th:if="${'Delayed'.equalsIgnoreCase(shipment.status) and (breachStatus == null or breachStatus == 'Normal')}"
+                class="badge badge-warning">🕒 Shipment Delayed</span>
+          <span th:if="${'Delayed'.equalsIgnoreCase(shipment.status) and (breachStatus == 'Major Breach' or breachStatus == 'Minor Breach')}"
+                class="badge badge-warning" style="margin-left:4px;">🕒 Also Delayed</span>
+        </div>
+      </div>
+
+      <div class="modal-field" th:if="${tempReading != null}">
+        <div class="modal-field__label">Current Temperature</div>
+        <div class="modal-field__value">
+          <strong th:style="${breachStatus == 'Major Breach'} ? 'color:var(--danger)' :
+                             (${breachStatus == 'Minor Breach'} ? 'color:var(--warning)' : 'color:var(--success)')"
+                  th:text="${#numbers.formatDecimal(tempReading.temperatureCelsius, 1, 1)} + ' °C'">—</strong>
+          <span class="text-muted" style="font-size:var(--text-xs); margin-left:4px;">(Target: 2°C – 8°C)</span>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-field__label">Current Location</div>
+        <div class="modal-field__value">
+          📍 <span th:text="${shipment.currentLocation != null ? shipment.currentLocation : '—'}">—</span>
+        </div>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <div class="modal-field">
+        <div class="modal-field__label">Owner Name</div>
+        <div class="modal-field__value"
+             th:text="${shipment.ownerName != null and !shipment.ownerName.isBlank()}
+                       ? ${shipment.ownerName} : 'Not on record'">—</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-field__label">Email</div>
+        <div class="modal-field__value"
+             th:text="${shipment.ownerEmail != null and !shipment.ownerEmail.isBlank()}
+                       ? ${shipment.ownerEmail} : 'Not on record'">—</div>
+      </div>
+
+      <div class="modal-field">
+        <div class="modal-field__label">Phone</div>
+        <div class="modal-field__value"
+             th:text="${shipment.ownerPhone != null and !shipment.ownerPhone.isBlank()}
+                       ? ${shipment.ownerPhone} : 'Not on record'">—</div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeTrackNotifyModal()">
+        Cancel
+      </button>
+      <form th:action="@{/track/notify}" method="post" style="margin:0;">
+        <input type="hidden" name="trackingNumber" th:value="${shipment.trackingNumber}">
+        <button type="submit"
+                class="btn btn-primary btn-sm"
+                th:disabled="${shipment.ownerEmail == null or shipment.ownerEmail.isBlank()}">
+          🔔 Notify Owner
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function openTrackNotifyModal() {
+    var modal = document.getElementById('track-notify-modal');
+    if (modal) {
+      modal.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeTrackNotifyModal() {
+    var modal = document.getElementById('track-notify-modal');
+    if (modal) {
+      modal.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('modal-backdrop')) {
+      e.target.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeTrackNotifyModal();
+    }
+  });
+</script>
 
 </body>
 </html>

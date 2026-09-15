@@ -21,6 +21,28 @@
       <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
     </div>
 
+    <!-- Flash: success notification banner -->
+    <div th:if="${notifySuccess}"
+         class="alert alert-success animate-fade-in mb-4"
+         style="margin-bottom: var(--sp-6);">
+      <span class="alert-icon">✅</span>
+      <div class="alert-text">
+        <div class="alert-title">Notification Sent</div>
+        <div th:text="${notifySuccess}"></div>
+      </div>
+    </div>
+
+    <!-- Flash: error notification banner -->
+    <div th:if="${notifyError}"
+         class="alert alert-danger animate-fade-in"
+         style="margin-bottom: var(--sp-6);">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-text">
+        <div class="alert-title">Notification Failed</div>
+        <div th:text="${notifyError}"></div>
+      </div>
+    </div>
+
     <!-- Stat tiles -->
     <div class="stat-grid stagger mb-8">
 
@@ -90,6 +112,7 @@
               <th>Latest Temp (°C)</th>
               <th>Recorded At</th>
               <th>Temp Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -159,6 +182,20 @@
                       class="badge badge-neutral">No Data</span>
               </td>
 
+              <!-- Actions column — Notify button only for breaches or delayed shipments -->
+              <td>
+                <button th:if="${row.status() == 'Major Breach' or row.status() == 'Minor Breach'
+                                 or 'Delayed'.equalsIgnoreCase(row.shipment().status())}"
+                        type="button"
+                        class="btn btn-danger btn-sm"
+                        th:attr="onclick='openNotifyModal(' + ${row.shipment().id()} + ')'">
+                  🔔 Notify Owner
+                </button>
+                <span th:unless="${row.status() == 'Major Breach' or row.status() == 'Minor Breach'
+                                   or 'Delayed'.equalsIgnoreCase(row.shipment().status())}"
+                      class="text-muted" style="font-size:var(--text-xs);">—</span>
+              </td>
+
             </tr>
           </tbody>
         </table>
@@ -175,6 +212,164 @@
 
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Notify Owner Modals — one hidden panel per breach/delayed row
+     ═══════════════════════════════════════════════════════════════ -->
+<th:block th:each="row : ${rows}"
+          th:if="${row.status() == 'Major Breach' or row.status() == 'Minor Breach'
+                   or 'Delayed'.equalsIgnoreCase(row.shipment().status())}">
+
+  <div class="modal-backdrop"
+       th:id="'modal-' + ${row.shipment().id()}"
+       role="dialog"
+       aria-modal="true"
+       th:attr="aria-label='Notify owner of shipment ' + ${row.shipment().trackingNumber()}">
+
+    <div class="modal-panel">
+
+      <!-- Modal header -->
+      <div class="modal-header">
+        <div class="modal-title">
+          🔔 Notify Shipment Owner
+        </div>
+        <button type="button"
+                class="modal-close"
+                th:attr="onclick='closeNotifyModal(' + ${row.shipment().id()} + ')'">✕</button>
+      </div>
+
+      <!-- Modal body -->
+      <div class="modal-body">
+
+        <!-- Shipment number -->
+        <div class="modal-field">
+          <div class="modal-field__label">Shipment Number</div>
+          <div class="modal-field__value font-mono"
+               th:text="${row.shipment().trackingNumber()}">—</div>
+        </div>
+
+        <!-- Issue -->
+        <div class="modal-field">
+          <div class="modal-field__label">Issue</div>
+          <div>
+            <span th:if="${row.status() == 'Major Breach'}"
+                  class="badge badge-live">🚨 Major Breach</span>
+            <span th:if="${row.status() == 'Minor Breach'}"
+                  class="badge badge-warning">⚠ Minor Breach</span>
+            <span th:if="${'Delayed'.equalsIgnoreCase(row.shipment().status()) and row.status() == 'Normal'}"
+                  class="badge badge-warning">🕒 Shipment Delayed</span>
+          </div>
+        </div>
+
+        <!-- Current temperature -->
+        <div class="modal-field" th:if="${row.reading() != null}">
+          <div class="modal-field__label">Current Temperature</div>
+          <div class="modal-field__value">
+            <strong th:style="${row.status() == 'Major Breach'} ? 'color:var(--danger)' :
+                               (${row.status() == 'Minor Breach'} ? 'color:var(--warning)' :
+                               'color:var(--success)')"
+                    th:text="${#numbers.formatDecimal(row.reading().temperatureCelsius(), 1, 1)} + ' °C'">—</strong>
+            <span class="text-muted" style="font-size:var(--text-xs); margin-left:4px;">
+              (Target: 2°C – 8°C)
+            </span>
+          </div>
+        </div>
+
+        <!-- Current location -->
+        <div class="modal-field">
+          <div class="modal-field__label">Current Location</div>
+          <div class="modal-field__value">
+            📍 <span th:text="${row.shipment().currentLocation() != null ? row.shipment().currentLocation() : '—'}">—</span>
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <!-- Owner contact details -->
+        <div class="modal-field">
+          <div class="modal-field__label">Owner Name</div>
+          <div class="modal-field__value"
+               th:text="${row.shipment().ownerName() != null and !row.shipment().ownerName().isBlank()}
+                         ? ${row.shipment().ownerName()} : 'Not on record'">—</div>
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-field__label">Email</div>
+          <div class="modal-field__value"
+               th:text="${row.shipment().ownerEmail() != null and !row.shipment().ownerEmail().isBlank()}
+                         ? ${row.shipment().ownerEmail()} : 'Not on record'">—</div>
+        </div>
+
+        <div class="modal-field">
+          <div class="modal-field__label">Phone</div>
+          <div class="modal-field__value"
+               th:text="${row.shipment().ownerPhone() != null and !row.shipment().ownerPhone().isBlank()}
+                         ? ${row.shipment().ownerPhone()} : 'Not on record'">—</div>
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <button type="button"
+                class="btn btn-secondary btn-sm"
+                th:attr="onclick='closeNotifyModal(' + ${row.shipment().id()} + ')'">
+          Cancel
+        </button>
+
+        <!-- POST form to notify endpoint -->
+        <form th:action="@{/coldchain/notify/{id}(id=${row.shipment().id()})}"
+              method="post"
+              style="margin:0;">
+          <button type="submit"
+                  class="btn btn-primary btn-sm"
+                  th:disabled="${row.shipment().ownerEmail() == null or row.shipment().ownerEmail().isBlank()}">
+            🔔 Notify Owner
+          </button>
+        </form>
+      </div>
+
+    </div><!-- /modal-panel -->
+  </div><!-- /modal-backdrop -->
+
+</th:block>
+
+<!-- ── Modal JS (no external deps) ──────────────────────────── -->
+<script>
+  function openNotifyModal(id) {
+    var modal = document.getElementById('modal-' + id);
+    if (modal) {
+      modal.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeNotifyModal(id) {
+    var modal = document.getElementById('modal-' + id);
+    if (modal) {
+      modal.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Close modal on backdrop click
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('modal-backdrop')) {
+      e.target.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.is-open').forEach(function(m) {
+        m.classList.remove('is-open');
+      });
+      document.body.style.overflow = '';
+    }
+  });
+</script>
 
 </body>
 </html>
