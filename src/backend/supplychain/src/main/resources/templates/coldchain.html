@@ -128,8 +128,10 @@
                     <div class="temp-gauge-outer">
                       <!-- gauge maps -5°C→0%, 20°C→100% (span=25°C) so the
                            2–8°C normal band sits clearly in the lower third. -->
+                      <!-- Use 0.0 (double literal) so SpEL resolves Math.max(double,double)
+                           unambiguously — Math.max(int,double) is not a valid overload. -->
                       <div class="temp-gauge-fill"
-                           th:with="pct=${T(java.lang.Math).min(100, T(java.lang.Math).max(0, (row.reading.temperatureCelsius + 5) * 4))}"
+                           th:with="pct=${T(java.lang.Math).min(100.0, T(java.lang.Math).max(0.0, (row.reading.temperatureCelsius + 5.0) * 4.0))}"
                            th:style="'width:' + ${pct} + '%;background:' + (${row.status == 'Major Breach'} ? 'var(--danger)' : (${row.status == 'Minor Breach'} ? 'var(--warning)' : 'var(--success)'))">
                       </div>
                     </div>
