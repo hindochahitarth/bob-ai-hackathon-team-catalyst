@@ -103,10 +103,21 @@ public class TrackingController {
         return "redirect:/track?trackingNumber=" + trackingNumber;
     }
 
-    /** GET /shipments & GET /track/shipments — full shipments list page */
+    /** GET /shipments — full shipments list page with live KPI counts */
     @GetMapping({"/shipments", "/track/shipments"})
     public String allShipments(Model model) {
-        model.addAttribute("shipments", shipmentRepo.findAll());
+        var all = shipmentRepo.findAll();
+        long inTransitCount  = all.stream().filter(s -> s.getStatus() != null && s.getStatus().startsWith("IN_TRANSIT")).count();
+        long delayedCount    = all.stream().filter(s -> "DELAYED".equalsIgnoreCase(s.getStatus())).count();
+        long deliveredCount  = all.stream().filter(s -> "DELIVERED".equalsIgnoreCase(s.getStatus())).count();
+        long coldChainCount  = all.stream().filter(com.teamcatalyst.supplychain.model.Shipment::isColdChain).count();
+
+        model.addAttribute("allShipments",   all);
+        model.addAttribute("totalShipments", all.size());
+        model.addAttribute("inTransitCount", inTransitCount);
+        model.addAttribute("delayedCount",   delayedCount);
+        model.addAttribute("deliveredCount", deliveredCount);
+        model.addAttribute("coldChainCount", coldChainCount);
         return "shipments";
     }
 }

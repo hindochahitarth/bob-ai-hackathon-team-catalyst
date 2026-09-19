@@ -1,61 +1,68 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>Idle Fleet Assets — Supply Chain Assistant</title>
+  <title>Fleet Management — FreightOS</title>
 </head>
 <body>
-
 <nav th:replace="~{fragments/navbar :: navbar('fleet')}"></nav>
 
 <div class="page-wrapper">
   <div class="container">
 
-    <!-- Page Header -->
+    <!-- Header -->
     <div class="page-header flex items-center justify-between">
       <div>
-        <h1 class="page-title">Idle Fleet Assets</h1>
+        <h1 class="page-title">🚛 Fleet Command Centre</h1>
         <p class="page-subtitle">
-          <span th:text="${idleCount}">0</span> asset(s) currently idle and available for dispatch
+          <span th:text="${idleCount}">0</span> idle assets available ·
+          Real-time asset tracking and dispatch management
         </p>
       </div>
-      <div class="flex gap-2">
-        <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+      <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    </div>
+
+    <!-- Flash messages -->
+    <div th:if="${successMessage}" class="alert alert-success animate-fade-in mb-6">
+      <span class="alert-icon">✅</span><div class="alert-text" th:text="${successMessage}"></div>
+    </div>
+
+    <!-- KPI bar -->
+    <div class="kpi-grid stagger" style="grid-template-columns:repeat(3,1fr);max-width:600px;">
+      <div class="kpi-card kpi-card--warning">
+        <div class="kpi-top"><div class="kpi-icon">🅿️</div><span class="kpi-live-badge">LIVE</span></div>
+        <div class="kpi-value" th:text="${idleCount}">0</div>
+        <div class="kpi-label">Idle — Ready</div>
+      </div>
+      <div class="kpi-card kpi-card--success">
+        <div class="kpi-top"><div class="kpi-icon">🚛</div></div>
+        <div class="kpi-value" th:text="${inUseCount != null ? inUseCount : 0}">0</div>
+        <div class="kpi-label">Active Deployments</div>
+      </div>
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top"><div class="kpi-icon">📊</div></div>
+        <div class="kpi-value" th:text="${totalCount != null ? totalCount : 0}">0</div>
+        <div class="kpi-label">Total Fleet Assets</div>
       </div>
     </div>
 
-    <!-- Summary stat -->
-    <div class="stat-grid stagger mb-8" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); max-width:600px;">
-      <div class="stat-card stat-card--warning">
-        <div class="stat-card__icon">🚛</div>
-        <div class="stat-card__value" th:text="${idleCount}">0</div>
-        <div class="stat-card__label">Idle Assets</div>
-      </div>
-    </div>
-
-    <!-- Fleet Table Card -->
+    <!-- Fleet Table -->
     <div class="card animate-fade-in-up">
       <div class="card__header">
         <div>
           <div class="card__title">Idle Asset Register</div>
-          <div class="card__subtitle">Assets with status = IDLE awaiting assignment</div>
+          <div class="card__subtitle">Available fleet units — assign to shipments via Dispatch button</div>
         </div>
         <span class="badge badge-warning" th:text="${idleCount} + ' idle'">0 idle</span>
       </div>
 
-      <!-- Empty state -->
       <div th:if="${idleAssets.isEmpty()}" class="empty-state">
         <div class="empty-state__icon">✅</div>
-        <div class="empty-state__title">No Idle Assets</div>
-        <div class="empty-state__desc">
-          All fleet assets are currently active or in maintenance.
-          No idle units require reassignment at this time.
-        </div>
-        <a href="/dashboard" class="btn btn-secondary btn-sm" style="margin-top: var(--sp-4);">← Back to Dashboard</a>
+        <div class="empty-state__title">All Assets Deployed</div>
+        <div class="empty-state__desc">No idle assets — full utilisation achieved.</div>
       </div>
 
-      <!-- Data table -->
       <div th:unless="${idleAssets.isEmpty()}" class="table-wrapper">
-        <table class="table" id="idle-fleet-table">
+        <table class="table">
           <thead>
             <tr>
               <th>#</th>
@@ -63,72 +70,111 @@
               <th>Identifier</th>
               <th>Current Location</th>
               <th>Status</th>
+              <th>Utilisation</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            <tr th:each="asset, stat : ${idleAssets}">
-
-              <!-- Row number -->
-              <td class="text-muted font-mono" th:text="${asset.id}">1</td>
-
-              <!-- Asset Type with icon -->
-              <td>
-                <div class="flex items-center gap-2">
-                  <!-- Icon based on asset type -->
-                  <span style="font-size:18px;" th:switch="${#strings.toUpperCase(asset.assetType)}">
-                    <span th:case="'TRUCK'">🚛</span>
-                    <span th:case="'HEAVY TRUCK'">🚛</span>
-                    <span th:case="'MEDIUM TRUCK'">🚚</span>
-                    <span th:case="'VAN'">🚐</span>
-                    <span th:case="'REFRIGERATED VAN'">🚐</span>
-                    <span th:case="'CONTAINER'">📦</span>
-                    <span th:case="'VESSEL'">🚢</span>
-                    <span th:case="'SHIP'">🚢</span>
-                    <span th:case="'PLANE'">✈️</span>
-                    <span th:case="'AIRCRAFT'">✈️</span>
-                    <span th:case="'DRONE'">🚁</span>
-                    <span th:case="'TRAIN'">🚂</span>
-                    <span th:case="*">🔧</span>
-                  </span>
-                  <span th:text="${asset.assetType}">—</span>
-                </div>
-              </td>
-
-              <!-- Identifier -->
-              <td>
-                <span class="font-mono" style="color:var(--accent);"
-                      th:text="${asset.identifier}">—</span>
-              </td>
-
-              <!-- Current Location -->
-              <td>
-                <span style="display:inline-flex; align-items:center; gap:4px;">
-                  <span style="color:var(--text-muted); font-size:13px;">📍</span>
-                  <span th:text="${asset.currentLocation}">—</span>
+            <tr th:each="asset : ${idleAssets}">
+              <td class="font-mono text-muted" th:text="${asset.id}">1</td>
+              <td style="color:var(--text-primary);">
+                <span style="font-size:18px;"
+                      th:text="${#strings.equalsIgnoreCase(asset.assetType,'TRUCK') ? '🚛' : (#strings.equalsIgnoreCase(asset.assetType,'VESSEL') ? '🚢' : '📦')}">
                 </span>
+                &nbsp;<span th:text="${asset.assetType}">—</span>
               </td>
-
-              <!-- Status badge — always IDLE on this page -->
+              <td class="font-mono" th:text="${asset.identifier}">—</td>
+              <td style="font-size:var(--text-xs);">📍 <span th:text="${asset.currentLocation}">—</span></td>
+              <td><span class="badge badge-warning">IDLE</span></td>
+              <td style="min-width:120px;">
+                <div class="util-bar"><div class="util-bar__fill" style="width:0%"></div></div>
+                <span style="font-size:10px;color:var(--text-muted);margin-top:3px;display:block;">0% utilised</span>
+              </td>
               <td>
-                <span class="badge badge-warning" th:text="${asset.status}">IDLE</span>
+                <button type="button" class="btn btn-primary btn-sm"
+                        th:attr="onclick='dispatchAsset(' + ${asset.id} + ', \'' + ${asset.identifier} + '\')'">
+                  🚀 Dispatch
+                </button>
               </td>
-
             </tr>
           </tbody>
         </table>
-
         <div class="table-footer">
-          <span>
-            <strong th:text="${idleCount}">0</strong> idle asset(s) ready for dispatch
-          </span>
-          <span class="text-muted">Assign to active shipments to optimise utilisation</span>
+          <span><strong th:text="${idleCount}">0</strong> idle asset(s) ready for deployment</span>
+          <span class="text-muted">Assign to active shipments to maximise utilisation</span>
         </div>
-      </div><!-- /table-wrapper -->
-
-    </div><!-- /card -->
+      </div>
+    </div>
 
   </div>
 </div>
 
+<!-- Dispatch Modal -->
+<div class="modal-backdrop" id="dispatch-modal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-title">🚀 Dispatch Asset</div>
+      <button class="modal-close" onclick="closeDispatchModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <div class="modal-field__label">Asset</div>
+        <div class="modal-field__value font-mono" id="dispatch-asset-id" style="color:var(--accent);">—</div>
+      </div>
+      <div class="modal-field">
+        <label class="form-label" for="dispatch-location">Deploy to Location</label>
+        <select id="dispatch-location" class="form-select">
+          <option value="Mumbai Port">Mumbai Port</option>
+          <option value="Delhi Hub">Delhi Hub</option>
+          <option value="Chennai Port">Chennai Port</option>
+          <option value="Bangalore Depot">Bangalore Depot</option>
+          <option value="Nagpur Crossing">Nagpur Crossing</option>
+          <option value="Kolkata Port">Kolkata Port</option>
+          <option value="Surat Hub">Surat Hub</option>
+          <option value="Pune Depot">Pune Depot</option>
+          <option value="Nashik Hub">Nashik Hub</option>
+          <option value="Hyderabad Hub">Hyderabad Hub</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeDispatchModal()">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" id="confirm-dispatch-btn" onclick="confirmDispatch()">🚀 Confirm Dispatch</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var _dispatchId = null;
+  function dispatchAsset(id, name) {
+    _dispatchId = id;
+    document.getElementById('dispatch-asset-id').textContent = name;
+    document.getElementById('dispatch-modal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDispatchModal() {
+    document.getElementById('dispatch-modal').classList.remove('is-open');
+    document.body.style.overflow = '';
+    _dispatchId = null;
+  }
+  function confirmDispatch() {
+    if (!_dispatchId) return;
+    var location = document.getElementById('dispatch-location').value;
+    var btn = document.getElementById('confirm-dispatch-btn');
+    btn.textContent = 'Dispatching...'; btn.disabled = true;
+    fetch('/api/v1/fleet/' + _dispatchId + '/assign', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ location: location })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      closeDispatchModal();
+      if (d.success) { location.reload(); }
+    })
+    .catch(function() { btn.textContent = '🚀 Confirm Dispatch'; btn.disabled = false; });
+  }
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDispatchModal(); });
+</script>
 </body>
 </html>

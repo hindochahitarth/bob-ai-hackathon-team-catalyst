@@ -1,375 +1,262 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>Cold Chain Monitor — Supply Chain Assistant</title>
+  <title>Cold Chain Monitor — FreightOS</title>
+  <style>
+    /* Sparkline SVG inline */
+    .temp-gauge-wrap { display:flex; align-items:center; gap:var(--sp-3); }
+    .temp-gauge-label { font-family:var(--font-mono); font-size:20px; font-weight:700; min-width:56px; }
+    .temp-gauge-outer { flex:1; height:8px; background:var(--bg-overlay); border-radius:4px; overflow:hidden; }
+    .temp-gauge-fill  { height:100%; border-radius:4px; transition:width 0.6s var(--ease); }
+  </style>
 </head>
 <body>
-
 <nav th:replace="~{fragments/navbar :: navbar('coldchain')}"></nav>
 
 <div class="page-wrapper">
   <div class="container">
 
-    <!-- Page Header -->
+    <!-- Header -->
     <div class="page-header flex items-center justify-between">
       <div>
         <h1 class="page-title">❄️ Cold Chain Monitor</h1>
         <p class="page-subtitle">
-          Temperature-sensitive shipments — target range 2°C to 8°C
+          <span class="live-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--info);margin-right:5px;vertical-align:middle;animation:pulse-live 1.2s infinite;"></span>
+          IoT sensor readings — target 2°C to 8°C — auto-polling every 8 s
         </p>
       </div>
       <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
     </div>
 
-    <!-- Flash: success notification banner -->
-    <div th:if="${notifySuccess}"
-         class="alert alert-success animate-fade-in mb-4"
-         style="margin-bottom: var(--sp-6);">
+    <!-- Flash messages -->
+    <div th:if="${notifySuccess}" class="alert alert-success animate-fade-in mb-6">
       <span class="alert-icon">✅</span>
-      <div class="alert-text">
-        <div class="alert-title">Notification Sent</div>
-        <div th:text="${notifySuccess}"></div>
-      </div>
+      <div class="alert-text"><div class="alert-title">Notification Dispatched</div><span th:text="${notifySuccess}"></span></div>
     </div>
-
-    <!-- Flash: error notification banner -->
-    <div th:if="${notifyError}"
-         class="alert alert-danger animate-fade-in"
-         style="margin-bottom: var(--sp-6);">
+    <div th:if="${notifyError}" class="alert alert-danger animate-fade-in mb-6">
       <span class="alert-icon">⚠️</span>
-      <div class="alert-text">
-        <div class="alert-title">Notification Failed</div>
-        <div th:text="${notifyError}"></div>
-      </div>
+      <div class="alert-text"><div class="alert-title">Notification Failed</div><span th:text="${notifyError}"></span></div>
     </div>
 
-    <!-- Stat tiles -->
-    <div class="stat-grid stagger mb-8">
-
-      <div class="stat-card stat-card--info">
-        <div class="stat-card__icon">❄️</div>
-        <div class="stat-card__value" th:text="${totalCount}">0</div>
-        <div class="stat-card__label">Cold Chain Shipments</div>
+    <!-- KPI tiles -->
+    <div class="kpi-grid stagger" style="grid-template-columns:repeat(4,1fr);">
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top"><div class="kpi-icon">❄️</div><span class="kpi-live-badge">LIVE</span></div>
+        <div class="kpi-value" th:text="${totalCount}">0</div>
+        <div class="kpi-label">Monitored Loads</div>
       </div>
-
-      <div class="stat-card stat-card--success">
-        <div class="stat-card__icon">✅</div>
-        <div class="stat-card__value" th:text="${normalCount}">0</div>
-        <div class="stat-card__label">Within Normal Range</div>
+      <div class="kpi-card kpi-card--success">
+        <div class="kpi-top"><div class="kpi-icon">✅</div></div>
+        <div class="kpi-value" th:text="${normalCount}">0</div>
+        <div class="kpi-label">Within Range</div>
+        <div class="kpi-delta kpi-delta--up">2–8 °C compliant</div>
       </div>
-
-      <div class="stat-card stat-card--warning">
-        <div class="stat-card__icon">⚠️</div>
-        <div class="stat-card__value" th:text="${minorBreachCount}">0</div>
-        <div class="stat-card__label">Minor Breaches</div>
+      <div class="kpi-card kpi-card--warning">
+        <div class="kpi-top"><div class="kpi-icon">⚠️</div><span th:if="${minorBreachCount > 0}" class="kpi-live-badge">ALERT</span></div>
+        <div class="kpi-value" th:text="${minorBreachCount}">0</div>
+        <div class="kpi-label">Minor Breaches</div>
+        <div class="kpi-delta kpi-delta--warn">0–2 °C or 8–10 °C</div>
       </div>
-
-      <div class="stat-card stat-card--danger">
-        <div class="stat-card__icon">🚨</div>
-        <div class="stat-card__value" th:text="${majorBreachCount}">0</div>
-        <div class="stat-card__label">Major Breaches</div>
+      <div class="kpi-card" th:classappend="${majorBreachCount > 0} ? 'kpi-card--danger' : 'kpi-card--info'">
+        <div class="kpi-top">
+          <div class="kpi-icon">🚨</div>
+          <span th:if="${majorBreachCount > 0}" class="kpi-live-badge" style="background:var(--danger-dim);border-color:var(--danger);color:var(--danger);">CRITICAL</span>
+        </div>
+        <div class="kpi-value" th:text="${majorBreachCount}" th:style="${majorBreachCount > 0} ? 'color:var(--danger)' : ''">0</div>
+        <div class="kpi-label">Major Breaches</div>
+        <div class="kpi-delta" th:classappend="${majorBreachCount > 0} ? 'kpi-delta--down' : ''">Outside &lt; 0 or &gt; 10 °C</div>
       </div>
-
     </div>
 
     <!-- Table card -->
     <div class="card animate-fade-in-up">
       <div class="card__header">
         <div>
-          <div class="card__title">Shipment Temperature Log</div>
-          <div class="card__subtitle">
-            Latest sensor reading per cold-chain shipment
-          </div>
+          <div class="card__title">Live Temperature Log</div>
+          <div class="card__subtitle">Latest IoT sensor reading per cold-chain shipment · auto-refreshes</div>
         </div>
-        <!-- Legend -->
-        <div class="flex gap-2" style="flex-wrap:wrap;">
+        <div class="flex gap-2">
           <span class="badge badge-success">2–8°C Normal</span>
           <span class="badge badge-warning">Minor Breach</span>
           <span class="badge badge-danger">Major Breach</span>
         </div>
       </div>
 
-      <!-- Empty state -->
       <div th:if="${rows.isEmpty()}" class="empty-state">
         <div class="empty-state__icon">❄️</div>
         <div class="empty-state__title">No Cold Chain Shipments</div>
-        <div class="empty-state__desc">
-          There are currently no shipments with the cold chain flag enabled.
-          Cold-chain tracking will appear here once such shipments are added.
-        </div>
-        <a href="/dashboard" class="btn btn-secondary btn-sm" style="margin-top:var(--sp-4);">← Back to Dashboard</a>
+        <div class="empty-state__desc">No shipments with cold-chain monitoring enabled.</div>
       </div>
 
-      <!-- Data table -->
       <div th:unless="${rows.isEmpty()}" class="table-wrapper">
-        <table class="table" id="coldchain-table">
+        <table class="table">
           <thead>
             <tr>
               <th>Tracking #</th>
-              <th>Cargo Type</th>
+              <th>Cargo</th>
               <th>Route</th>
-              <th>Current Location</th>
-              <th>Latest Temp (°C)</th>
-              <th>Recorded At</th>
-              <th>Temp Status</th>
+              <th>Location</th>
+              <th>Temperature Gauge</th>
+              <th>Recorded</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr th:each="row : ${rows}"
-                th:style="${row.status == 'Major Breach'} ?
-                           'background: rgba(239,68,68,0.07); border-left: 3px solid var(--danger);' :
-                           (${row.status == 'Minor Breach'} ?
-                           'background: rgba(245,158,11,0.05); border-left: 3px solid var(--warning);' :
-                           '')">
+                th:class="${row.status == 'Major Breach'} ? 'sev-high' : (${row.status == 'Minor Breach'} ? 'sev-medium' : '')">
 
-              <!-- Tracking number -->
               <td>
                 <a th:href="@{/track(trackingNumber=${row.shipment.trackingNumber})}"
-                   class="font-mono" style="color:var(--accent); text-decoration:none; font-weight:600;"
+                   class="font-mono" style="font-weight:600;"
                    th:text="${row.shipment.trackingNumber}">—</a>
               </td>
+              <td style="color:var(--text-primary);" th:text="${row.shipment.cargoType}">—</td>
+              <td style="font-size:var(--text-xs);">
+                <span th:if="${row.shipment.route != null}"
+                      th:text="${row.shipment.route.origin + ' → ' + row.shipment.route.destination}">—</span>
+              </td>
+              <td style="font-size:var(--text-xs);">📍 <span th:text="${row.shipment.currentLocation}">—</span></td>
 
-              <!-- Cargo type -->
-              <td th:text="${row.shipment.cargoType}">—</td>
-
-              <!-- Route -->
-              <td>
-                <span th:if="${row.shipment.route != null}" class="text-secondary"
-                      th:text="${row.shipment.route.origin} + ' → ' + ${row.shipment.route.destination}">
-                </span>
-                <span th:unless="${row.shipment.route != null}" class="text-muted">—</span>
+              <!-- Temperature gauge -->
+              <td style="min-width:180px;">
+                <div th:if="${row.reading != null}">
+                  <div class="temp-gauge-wrap">
+                    <span class="temp-gauge-label"
+                          th:style="${row.status == 'Major Breach'} ? 'color:var(--danger)' : (${row.status == 'Minor Breach'} ? 'color:var(--warning)' : 'color:var(--success)')"
+                          th:text="${#numbers.formatDecimal(row.reading.temperatureCelsius,1,1) + '°'}">—</span>
+                    <div class="temp-gauge-outer">
+                      <!-- gauge: 0°C=0%, 20°C=100% normalised. Danger zone highlighted *)
+                           we clamp between 0 and 100 -->
+                      <div class="temp-gauge-fill"
+                           th:with="pct=${T(java.lang.Math).min(100, T(java.lang.Math).max(0, row.reading.temperatureCelsius * 5))}"
+                           th:style="'width:' + ${pct} + '%;background:' + (${row.status == 'Major Breach'} ? 'var(--danger)' : (${row.status == 'Minor Breach'} ? 'var(--warning)' : 'var(--success)'))">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <span th:unless="${row.reading != null}" class="text-muted" style="font-size:var(--text-xs);">No reading</span>
               </td>
 
-              <!-- Current location -->
-              <td>
-                <span style="color:var(--text-secondary);">📍</span>
-                <span th:text="${row.shipment.currentLocation}">—</span>
-              </td>
-
-              <!-- Temperature reading -->
-              <td>
-                <span th:if="${row.reading != null}">
-                  <!-- Colour the temp value by breach level -->
-                  <strong th:style="${row.status == 'Major Breach'} ? 'color:var(--danger)' :
-                                    (${row.status == 'Minor Breach'} ? 'color:var(--warning)' :
-                                    'color:var(--success)')"
-                          th:text="${#numbers.formatDecimal(row.reading.temperatureCelsius, 1, 1)} + ' °C'">
-                    —
-                  </strong>
-                </span>
-                <span th:unless="${row.reading != null}" class="text-muted">No reading</span>
-              </td>
-
-              <!-- Recorded at -->
-              <td class="text-secondary">
+              <td class="text-muted" style="font-size:var(--text-xs);">
                 <span th:if="${row.reading != null}"
-                      th:text="${#temporals.format(row.reading.recordedAt, 'dd MMM yyyy, HH:mm')}">
-                  —
-                </span>
-                <span th:unless="${row.reading != null}" class="text-muted">—</span>
+                      th:text="${#temporals.format(row.reading.recordedAt,'dd MMM, HH:mm:ss')}">—</span>
               </td>
 
-              <!-- Status badge -->
               <td>
-                <span th:if="${row.status == 'Normal'}"
-                      class="badge badge-success">✓ Normal</span>
-                <span th:if="${row.status == 'Minor Breach'}"
-                      class="badge badge-warning">⚠ Minor Breach</span>
-                <span th:if="${row.status == 'Major Breach'}"
-                      class="badge badge-live">🚨 Major Breach</span>
-                <span th:if="${row.status == 'No Data'}"
-                      class="badge badge-neutral">No Data</span>
+                <span th:if="${row.status == 'Normal'}"        class="badge badge-success">✓ Normal</span>
+                <span th:if="${row.status == 'Minor Breach'}"  class="badge badge-warning">⚠ Minor</span>
+                <span th:if="${row.status == 'Major Breach'}"  class="badge badge-live">🚨 CRITICAL</span>
+                <span th:if="${row.status == 'No Data'}"       class="badge badge-neutral">No Data</span>
               </td>
 
-              <!-- Actions column — Notify button only for breaches or delayed shipments -->
               <td>
-                <button th:if="${row.status == 'Major Breach' or row.status == 'Minor Breach'
-                                 or 'Delayed'.equalsIgnoreCase(row.shipment.status)}"
-                        type="button"
-                        class="btn btn-danger btn-sm"
+                <button th:if="${row.status == 'Major Breach' or row.status == 'Minor Breach' or 'DELAYED'.equalsIgnoreCase(row.shipment.status)}"
+                        type="button" class="btn btn-danger btn-sm"
                         th:attr="onclick='openNotifyModal(' + ${row.shipment.id} + ')'">
-                  🔔 Notify Owner
+                  🔔 Notify
                 </button>
-                <span th:unless="${row.status == 'Major Breach' or row.status == 'Minor Breach'
-                                   or 'Delayed'.equalsIgnoreCase(row.shipment.status)}"
+                <span th:unless="${row.status == 'Major Breach' or row.status == 'Minor Breach' or 'DELAYED'.equalsIgnoreCase(row.shipment.status)}"
                       class="text-muted" style="font-size:var(--text-xs);">—</span>
               </td>
-
             </tr>
           </tbody>
         </table>
-
         <div class="table-footer">
-          <span>
-            <strong th:text="${totalCount}">0</strong> cold-chain shipment(s) monitored
-          </span>
-          <span class="text-muted">Target range: 2°C – 8°C</span>
+          <span><strong th:text="${totalCount}">0</strong> cold-chain loads · Target 2°C – 8°C</span>
+          <span style="color:var(--info);">● IoT Live Feed</span>
         </div>
       </div>
-
-    </div><!-- /card -->
+    </div>
 
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     Notify Owner Modals — one hidden panel per breach/delayed row
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Notify Modals -->
 <th:block th:each="row : ${rows}"
-          th:if="${row.status == 'Major Breach' or row.status == 'Minor Breach'
-                   or 'Delayed'.equalsIgnoreCase(row.shipment.status)}">
-
-  <div class="modal-backdrop"
-       th:id="'modal-' + ${row.shipment.id}"
-       role="dialog"
-       aria-modal="true"
-       th:attr="aria-label='Notify owner of shipment ' + ${row.shipment.trackingNumber}">
-
+          th:if="${row.status == 'Major Breach' or row.status == 'Minor Breach' or 'DELAYED'.equalsIgnoreCase(row.shipment.status)}">
+  <div class="modal-backdrop" th:id="'modal-' + ${row.shipment.id}">
     <div class="modal-panel">
-
-      <!-- Modal header -->
       <div class="modal-header">
-        <div class="modal-title">
-          🔔 Notify Shipment Owner
-        </div>
-        <button type="button"
-                class="modal-close"
-                th:attr="onclick='closeNotifyModal(' + ${row.shipment.id} + ')'">✕</button>
+        <div class="modal-title">🔔 Alert Shipment Owner</div>
+        <button type="button" class="modal-close" th:attr="onclick='closeNotifyModal(' + ${row.shipment.id} + ')'">✕</button>
       </div>
-
-      <!-- Modal body -->
       <div class="modal-body">
-
-        <!-- Shipment number -->
         <div class="modal-field">
-          <div class="modal-field__label">Shipment Number</div>
-          <div class="modal-field__value font-mono"
-               th:text="${row.shipment.trackingNumber}">—</div>
+          <div class="modal-field__label">Shipment</div>
+          <div class="modal-field__value font-mono" style="color:var(--accent);" th:text="${row.shipment.trackingNumber}">—</div>
         </div>
-
-        <!-- Issue -->
         <div class="modal-field">
           <div class="modal-field__label">Issue</div>
           <div>
-            <span th:if="${row.status == 'Major Breach'}"
-                  class="badge badge-live">🚨 Major Breach</span>
-            <span th:if="${row.status == 'Minor Breach'}"
-                  class="badge badge-warning">⚠ Minor Breach</span>
-            <span th:if="${'Delayed'.equalsIgnoreCase(row.shipment.status) and row.status == 'Normal'}"
-                  class="badge badge-warning">🕒 Shipment Delayed</span>
+            <span th:if="${row.status == 'Major Breach'}" class="badge badge-live">🚨 Major Breach — CRITICAL</span>
+            <span th:if="${row.status == 'Minor Breach'}" class="badge badge-warning">⚠ Minor Breach</span>
           </div>
         </div>
-
-        <!-- Current temperature -->
         <div class="modal-field" th:if="${row.reading != null}">
           <div class="modal-field__label">Current Temperature</div>
           <div class="modal-field__value">
-            <strong th:style="${row.status == 'Major Breach'} ? 'color:var(--danger)' :
-                               (${row.status == 'Minor Breach'} ? 'color:var(--warning)' :
-                               'color:var(--success)')"
-                    th:text="${#numbers.formatDecimal(row.reading.temperatureCelsius, 1, 1)} + ' °C'">—</strong>
-            <span class="text-muted" style="font-size:var(--text-xs); margin-left:4px;">
-              (Target: 2°C – 8°C)
-            </span>
+            <strong th:style="${row.status == 'Major Breach'} ? 'color:var(--danger)' : 'color:var(--warning)'"
+                    th:text="${#numbers.formatDecimal(row.reading.temperatureCelsius,1,1) + ' °C'}">—</strong>
+            <span class="text-muted" style="font-size:var(--text-xs);margin-left:4px;">(Target 2–8°C)</span>
           </div>
         </div>
-
-        <!-- Current location -->
         <div class="modal-field">
-          <div class="modal-field__label">Current Location</div>
-          <div class="modal-field__value">
-            📍 <span th:text="${row.shipment.currentLocation != null ? row.shipment.currentLocation : '—'}">—</span>
-          </div>
+          <div class="modal-field__label">Location</div>
+          <div class="modal-field__value">📍 <span th:text="${row.shipment.currentLocation}">—</span></div>
         </div>
-
-        <div class="modal-divider"></div>
-
-        <!-- Owner contact details -->
+        <hr class="modal-divider"/>
         <div class="modal-field">
-          <div class="modal-field__label">Owner Name</div>
-          <div class="modal-field__value"
-               th:text="${row.shipment.ownerName != null and !row.shipment.ownerName.isBlank()}
-                         ? ${row.shipment.ownerName} : 'Not on record'">—</div>
+          <div class="modal-field__label">Owner</div>
+          <div class="modal-field__value" th:text="${row.shipment.ownerName != null ? row.shipment.ownerName : 'Not on record'}">—</div>
         </div>
-
         <div class="modal-field">
           <div class="modal-field__label">Email</div>
-          <div class="modal-field__value"
-               th:text="${row.shipment.ownerEmail != null and !row.shipment.ownerEmail.isBlank()}
-                         ? ${row.shipment.ownerEmail} : 'Not on record'">—</div>
+          <div class="modal-field__value" th:text="${row.shipment.ownerEmail != null ? row.shipment.ownerEmail : 'Not on record'}">—</div>
         </div>
-
         <div class="modal-field">
           <div class="modal-field__label">Phone</div>
-          <div class="modal-field__value"
-               th:text="${row.shipment.ownerPhone != null and !row.shipment.ownerPhone.isBlank()}
-                         ? ${row.shipment.ownerPhone} : 'Not on record'">—</div>
+          <div class="modal-field__value" th:text="${row.shipment.ownerPhone != null ? row.shipment.ownerPhone : 'Not on record'}">—</div>
         </div>
-
-      </div><!-- /modal-body -->
-
-      <!-- Modal footer -->
+      </div>
       <div class="modal-footer">
-        <button type="button"
-                class="btn btn-secondary btn-sm"
-                th:attr="onclick='closeNotifyModal(' + ${row.shipment.id} + ')'">
-          Cancel
-        </button>
-
-        <!-- POST form to notify endpoint -->
-        <form th:action="@{/coldchain/notify/{id}(id=${row.shipment.id})}"
-              method="post"
-              style="margin:0;">
-          <button type="submit"
-                  class="btn btn-primary btn-sm"
+        <button type="button" class="btn btn-secondary btn-sm" th:attr="onclick='closeNotifyModal(' + ${row.shipment.id} + ')'">Cancel</button>
+        <form th:action="@{/coldchain/notify/{id}(id=${row.shipment.id})}" method="post" style="margin:0;">
+          <button type="submit" class="btn btn-danger btn-sm"
                   th:disabled="${row.shipment.ownerEmail == null or row.shipment.ownerEmail.isBlank()}">
-            🔔 Notify Owner
+            🔔 Send Alert
           </button>
         </form>
       </div>
-
-    </div><!-- /modal-panel -->
-  </div><!-- /modal-backdrop -->
-
+    </div>
+  </div>
 </th:block>
 
-<!-- ── Modal JS (no external deps) ──────────────────────────── -->
 <script>
   function openNotifyModal(id) {
-    var modal = document.getElementById('modal-' + id);
-    if (modal) {
-      modal.classList.add('is-open');
-      document.body.style.overflow = 'hidden';
-    }
+    var m = document.getElementById('modal-' + id);
+    if (m) { m.classList.add('is-open'); document.body.style.overflow='hidden'; }
   }
-
   function closeNotifyModal(id) {
-    var modal = document.getElementById('modal-' + id);
-    if (modal) {
-      modal.classList.remove('is-open');
-      document.body.style.overflow = '';
-    }
+    var m = document.getElementById('modal-' + id);
+    if (m) { m.classList.remove('is-open'); document.body.style.overflow=''; }
   }
-
-  // Close modal on backdrop click
   document.addEventListener('click', function(e) {
     if (e.target && e.target.classList.contains('modal-backdrop')) {
-      e.target.classList.remove('is-open');
-      document.body.style.overflow = '';
+      e.target.classList.remove('is-open'); document.body.style.overflow='';
     }
   });
-
-  // Close modal on Escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       document.querySelectorAll('.modal-backdrop.is-open').forEach(function(m) {
         m.classList.remove('is-open');
       });
-      document.body.style.overflow = '';
+      document.body.style.overflow='';
     }
   });
-</script>
 
+  // Auto-reload every 8s to pick up new IoT readings
+  setTimeout(function() { location.reload(); }, 8000);
+</script>
 </body>
 </html>

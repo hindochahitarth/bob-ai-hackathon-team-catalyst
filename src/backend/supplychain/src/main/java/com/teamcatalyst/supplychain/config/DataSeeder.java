@@ -3,11 +3,13 @@ package com.teamcatalyst.supplychain.config;
 import com.teamcatalyst.supplychain.model.DisruptionEvent;
 import com.teamcatalyst.supplychain.model.FleetAsset;
 import com.teamcatalyst.supplychain.model.Route;
+import com.teamcatalyst.supplychain.model.RouteSegment;
 import com.teamcatalyst.supplychain.model.Shipment;
 import com.teamcatalyst.supplychain.model.TempReading;
 import com.teamcatalyst.supplychain.repository.DisruptionEventRepository;
 import com.teamcatalyst.supplychain.repository.FleetAssetRepository;
 import com.teamcatalyst.supplychain.repository.RouteRepository;
+import com.teamcatalyst.supplychain.repository.RouteSegmentRepository;
 import com.teamcatalyst.supplychain.repository.ShipmentRepository;
 import com.teamcatalyst.supplychain.repository.TempReadingRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class DataSeeder implements CommandLineRunner {
     private final DisruptionEventRepository disruptionEventRepository;
     private final FleetAssetRepository fleetAssetRepository;
     private final TempReadingRepository tempReadingRepository;
+    private final RouteSegmentRepository routeSegmentRepository;
 
     @Override
     public void run(String... args) {
@@ -56,13 +59,17 @@ public class DataSeeder implements CommandLineRunner {
 
         // 2. Seed Disruption Events (4 realistic disruptions matching route segments)
         DisruptionEvent d1 = new DisruptionEvent(null, "WEATHER", "NH48",
-                "Severe monsoon flooding and rockslides along Western Ghats section causing standstill traffic.", "HIGH");
+                "Severe monsoon flooding and rockslides along Western Ghats section causing standstill traffic.", "HIGH",
+                "ACTIVE", java.time.LocalDateTime.now().minusHours(3), null);
         DisruptionEvent d2 = new DisruptionEvent(null, "PORT_STRIKE", "MUMBAI_PORT",
-                "Dock workers union 48-hour flash strike stalling inbound and outbound container movement.", "HIGH");
+                "Dock workers union 48-hour flash strike stalling inbound and outbound container movement.", "HIGH",
+                "ACTIVE", java.time.LocalDateTime.now().minusHours(7), null);
         DisruptionEvent d3 = new DisruptionEvent(null, "GEOPOLITICAL", "DELHI_HUB",
-                "Regional transport strike and farmer toll blockade restricting commercial vehicle movements.", "MEDIUM");
+                "Regional transport strike and farmer toll blockade restricting commercial vehicle movements.", "MEDIUM",
+                "ACTIVE", java.time.LocalDateTime.now().minusHours(1), null);
         DisruptionEvent d4 = new DisruptionEvent(null, "WEATHER", "NAGPUR_CROSSING",
-                "Dense winter fog causing reduced visibility (<50m) and mandatory slow transit speeds.", "LOW");
+                "Dense winter fog causing reduced visibility (<50m) and mandatory slow transit speeds.", "LOW",
+                "ACTIVE", java.time.LocalDateTime.now().minusMinutes(30), null);
 
         disruptionEventRepository.saveAll(List.of(d1, d2, d3, d4));
 
@@ -159,6 +166,76 @@ public class DataSeeder implements CommandLineRunner {
                 t17_1, t17_2, t17_3
         ));
 
-        log.info("Data seeding complete! Seeded: 6 Routes, 4 Disruptions, 18 Shipments, 9 FleetAssets, 21 TempReadings.");
+        // 6. Seed Route Segments — all NH48/NH53/NH44/NH66/bypass corridors as individual DB rows
+        // Each row is a directed edge in the Dijkstra graph. effectiveWeight() = distanceKm × (1 + congestionScore × 2)
+        // Format: fromNode, toNode, segmentId, corridorName, distanceKm, incidentType, congestionScore, blocked,
+        //         speedKmh, additionalDelayMinutes, liveConditionDesc, lastUpdated
+        LocalDateTime ts = LocalDateTime.now();
+
+        List<RouteSegment> segments = List.of(
+            // ── NH48 : Mumbai ↔ Delhi (Western corridor) ─────────────────────────────
+            new RouteSegment(null,"MUMBAI_PORT",  "SURAT_HUB",       "NH48", "NH48 Mumbai–Surat",       265.0,"CLEAR",0.15,false,72.0,0,"Free-flow conditions.",ts),
+            new RouteSegment(null,"SURAT_HUB",    "MUMBAI_PORT",     "NH48", "NH48 Surat–Mumbai",       265.0,"CLEAR",0.12,false,75.0,0,"Normal transit speed.",ts),
+            new RouteSegment(null,"SURAT_HUB",    "JAIPUR_CORRIDOR", "NH48", "NH48 Surat–Jaipur",       490.0,"CLEAR",0.22,false,65.0,0,"Minor congestion near Vadodara.",ts),
+            new RouteSegment(null,"JAIPUR_CORRIDOR","SURAT_HUB",     "NH48", "NH48 Jaipur–Surat",       490.0,"CLEAR",0.18,false,68.0,0,"Intermittent toll queues.",ts),
+            new RouteSegment(null,"JAIPUR_CORRIDOR","DELHI_HUB",     "NH48", "NH48 Jaipur–Delhi",       270.0,"CLEAR",0.28,false,60.0,0,"Peak-hour congestion possible.",ts),
+            new RouteSegment(null,"DELHI_HUB",    "JAIPUR_CORRIDOR", "NH48", "NH48 Delhi–Jaipur",       270.0,"CLEAR",0.31,false,58.0,0,"Construction zone 40 km south.",ts),
+
+            // ── NH53 : Kolkata ↔ Nagpur ↔ Nashik (Central corridor) ──────────────────
+            new RouteSegment(null,"KOLKATA_PORT", "NAGPUR_CROSSING", "NH53", "NH53 Kolkata–Nagpur",     800.0,"CLEAR",0.10,false,78.0,0,"Smooth corridor.",ts),
+            new RouteSegment(null,"NAGPUR_CROSSING","KOLKATA_PORT",  "NH53", "NH53 Nagpur–Kolkata",     800.0,"CLEAR",0.10,false,78.0,0,"Smooth corridor.",ts),
+            new RouteSegment(null,"NAGPUR_CROSSING","NASHIK_HUB",    "NH53", "NH53 Nagpur–Nashik",      470.0,"CLEAR",0.20,false,67.0,0,"Minor detours near Wardha.",ts),
+            new RouteSegment(null,"NASHIK_HUB",   "NAGPUR_CROSSING", "NH53", "NH53 Nashik–Nagpur",      470.0,"CLEAR",0.18,false,69.0,0,"Normal traffic.",ts),
+            new RouteSegment(null,"NASHIK_HUB",   "MUMBAI_PORT",     "NH53", "NH53 Nashik–Mumbai",      170.0,"CLEAR",0.35,false,52.0,5,"Moderate congestion near Bhiwandi.",ts),
+            new RouteSegment(null,"MUMBAI_PORT",  "NASHIK_HUB",      "NH53", "NH53 Mumbai–Nashik",      170.0,"CLEAR",0.38,false,50.0,8,"Heavy weekend traffic.",ts),
+
+            // ── NH44 : Delhi ↔ Bangalore (North–South spine) ────────────────────────
+            new RouteSegment(null,"DELHI_HUB",    "GWALIOR",         "NH44", "NH44 Delhi–Gwalior",      320.0,"CLEAR",0.14,false,74.0,0,"Clear highway.",ts),
+            new RouteSegment(null,"GWALIOR",      "DELHI_HUB",       "NH44", "NH44 Gwalior–Delhi",      320.0,"CLEAR",0.16,false,72.0,0,"Slight morning mist.",ts),
+            new RouteSegment(null,"GWALIOR",      "NAGPUR_CROSSING", "NH44", "NH44 Gwalior–Nagpur",     460.0,"CLEAR",0.12,false,76.0,0,"Good road surface.",ts),
+            new RouteSegment(null,"NAGPUR_CROSSING","GWALIOR",       "NH44", "NH44 Nagpur–Gwalior",     460.0,"CLEAR",0.12,false,76.0,0,"Clear conditions.",ts),
+            new RouteSegment(null,"NAGPUR_CROSSING","HYDERABAD_HUB", "NH44", "NH44 Nagpur–Hyderabad",   500.0,"CLEAR",0.19,false,68.0,0,"Steady flow.",ts),
+            new RouteSegment(null,"HYDERABAD_HUB","NAGPUR_CROSSING", "NH44", "NH44 Hyderabad–Nagpur",   500.0,"CLEAR",0.15,false,72.0,0,"Normal highway conditions.",ts),
+            new RouteSegment(null,"HYDERABAD_HUB","BANGALORE_RING",  "NH44", "NH44 Hyderabad–Bangalore",570.0,"CLEAR",0.25,false,62.0,0,"Moderate cargo traffic.",ts),
+            new RouteSegment(null,"BANGALORE_RING","HYDERABAD_HUB",  "NH44", "NH44 Bangalore–Hyderabad",570.0,"CLEAR",0.22,false,64.0,0,"Smooth flow.",ts),
+
+            // ── NH66 / Coastal : Mumbai ↔ Goa ↔ Kochi ───────────────────────────────
+            new RouteSegment(null,"MUMBAI_PORT",  "GOA_COASTAL",     "NH66", "NH66 Mumbai–Goa",         590.0,"CLEAR",0.08,false,82.0,0,"Scenic coast road, light traffic.",ts),
+            new RouteSegment(null,"GOA_COASTAL",  "MUMBAI_PORT",     "NH66", "NH66 Goa–Mumbai",         590.0,"CLEAR",0.09,false,80.0,0,"Light northbound traffic.",ts),
+            new RouteSegment(null,"GOA_COASTAL",  "KOCHI_PORT",      "NH66", "NH66 Goa–Kochi",          570.0,"CLEAR",0.11,false,78.0,0,"Good road, minimal freight.",ts),
+            new RouteSegment(null,"KOCHI_PORT",   "GOA_COASTAL",     "NH66", "NH66 Kochi–Goa",          570.0,"CLEAR",0.10,false,79.0,0,"Smooth coastal transit.",ts),
+
+            // ── Bypass corridors ─────────────────────────────────────────────────────
+            new RouteSegment(null,"MUMBAI_PORT",  "PUNE_DEPOT",      "NH160_BYPASS", "NH160 Mumbai–Pune Bypass",140.0,"CLEAR",0.42,false,48.0,10,"Ghats section — watch for trucks.",ts),
+            new RouteSegment(null,"PUNE_DEPOT",   "MUMBAI_PORT",     "NH160_BYPASS", "NH160 Pune–Mumbai Bypass",140.0,"CLEAR",0.45,false,46.0,12,"Busy western ghats descent.",ts),
+            new RouteSegment(null,"PUNE_DEPOT",   "BANGALORE_RING",  "NH48",         "NH48 Pune–Bangalore",     840.0,"CLEAR",0.17,false,70.0,0,"Clear southern expressway.",ts),
+            new RouteSegment(null,"BANGALORE_RING","PUNE_DEPOT",     "NH48",         "NH48 Bangalore–Pune",     840.0,"CLEAR",0.15,false,72.0,0,"Normal southbound.",ts),
+            new RouteSegment(null,"PUNE_DEPOT",   "HYDERABAD_HUB",   "NH65",         "NH65 Pune–Hyderabad",     560.0,"CLEAR",0.13,false,75.0,0,"Clear national highway.",ts),
+            new RouteSegment(null,"HYDERABAD_HUB","PUNE_DEPOT",      "NH65",         "NH65 Hyderabad–Pune",     560.0,"CLEAR",0.11,false,77.0,0,"Light daytime traffic.",ts),
+
+            // ── NE1 Expressway: Ahmedabad ↔ Surat ───────────────────────────────────
+            new RouteSegment(null,"AHMEDABAD_HUB","SURAT_HUB",       "NE1_EXPRESSWAY","NE1 Ahmedabad–Surat",     250.0,"CLEAR",0.08,false,88.0,0,"Expressway — premium speed.",ts),
+            new RouteSegment(null,"SURAT_HUB",    "AHMEDABAD_HUB",   "NE1_EXPRESSWAY","NE1 Surat–Ahmedabad",     250.0,"CLEAR",0.07,false,90.0,0,"Smooth 6-lane corridor.",ts),
+
+            // ── Mumbai Bypass ────────────────────────────────────────────────────────
+            new RouteSegment(null,"MUMBAI_BYPASS","PUNE_DEPOT",       "NH3_BYPASS",   "NH3 Mumbai Bypass–Pune",  155.0,"CLEAR",0.38,false,51.0,8,"Bypass congestion noted.",ts),
+            new RouteSegment(null,"PUNE_DEPOT",   "MUMBAI_BYPASS",    "NH3_BYPASS",   "NH3 Pune–Mumbai Bypass",  155.0,"CLEAR",0.40,false,49.0,10,"Significant freight volumes.",ts),
+            new RouteSegment(null,"MUMBAI_PORT",  "MUMBAI_BYPASS",    "NH3_BYPASS",   "NH3 Mumbai–Bypass junction",25.0,"CLEAR",0.55,false,38.0,15,"City traffic to bypass entry.",ts),
+            new RouteSegment(null,"MUMBAI_BYPASS","MUMBAI_PORT",      "NH3_BYPASS",   "NH3 Bypass–Mumbai Port",   25.0,"CLEAR",0.50,false,40.0,12,"Port access road congested.",ts),
+            new RouteSegment(null,"MUMBAI_BYPASS","GOA_COASTAL",      "NH66",         "NH66 Bypass–Goa",         565.0,"CLEAR",0.09,false,81.0,0,"Fast coastal route.",ts),
+            new RouteSegment(null,"GOA_COASTAL",  "MUMBAI_BYPASS",    "NH66",         "NH66 Goa–Bypass",         565.0,"CLEAR",0.08,false,82.0,0,"Smooth northbound coast.",ts),
+
+            // ── Chennai ↔ Bangalore ──────────────────────────────────────────────────
+            new RouteSegment(null,"CHENNAI_PORT", "BANGALORE_RING",  "NH48",         "NH48 Chennai–Bangalore",  350.0,"CLEAR",0.24,false,63.0,5,"Moderate freight on SH.",ts),
+            new RouteSegment(null,"BANGALORE_RING","CHENNAI_PORT",   "NH48",         "NH48 Bangalore–Chennai",  350.0,"CLEAR",0.21,false,65.0,3,"Light reverse direction.",ts),
+
+            // ── NH52 alternate from Jaipur ───────────────────────────────────────────
+            new RouteSegment(null,"JAIPUR_CORRIDOR","NASHIK_HUB",    "NH52_CORRIDOR","NH52 Jaipur–Nashik bypass",580.0,"CLEAR",0.16,false,71.0,0,"Long diversion route.",ts),
+            new RouteSegment(null,"NASHIK_HUB",   "JAIPUR_CORRIDOR", "NH52_CORRIDOR","NH52 Nashik–Jaipur",      580.0,"CLEAR",0.14,false,73.0,0,"Alternate northern bypass.",ts)
+        );
+
+        routeSegmentRepository.saveAll(segments);
+
+        log.info("Data seeding complete! Seeded: 6 Routes, 4 Disruptions, 18 Shipments, 9 FleetAssets, 21 TempReadings, {} RouteSegments.", segments.size());
     }
 }

@@ -1,130 +1,123 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>Active Disruptions — Supply Chain Assistant</title>
+  <title>Disruptions — FreightOS</title>
 </head>
 <body>
-
 <nav th:replace="~{fragments/navbar :: navbar('disruptions')}"></nav>
 
 <div class="page-wrapper">
   <div class="container">
 
-    <!-- Page Header -->
+    <!-- Header -->
     <div class="page-header flex items-center justify-between">
       <div>
-        <h1 class="page-title">Active Disruptions</h1>
+        <h1 class="page-title">⚡ Disruption Management</h1>
         <p class="page-subtitle">
-          <span th:text="${totalCount}">0</span> total events —
-          <span class="text-danger" th:text="${highCount}">0</span> HIGH severity
+          <span id="active-count" th:text="${activeCount}">0</span> active ·
+          <span class="text-danger" th:text="${highCount}">0</span> HIGH severity ·
+          <span class="text-muted" th:text="${resolvedCount}">0</span> resolved
         </p>
       </div>
       <div class="flex gap-2">
         <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+        <button class="btn btn-warning btn-sm" onclick="openCreateModal()">⚡ Report New</button>
       </div>
     </div>
 
-    <!-- Flash error (redirect from impact page if id not found) -->
-    <div th:if="${error}" class="alert alert-danger mb-6" role="alert">
-      <span class="alert-icon">⚠️</span>
-      <div class="alert-text" th:text="${error}"></div>
-    </div>
+    <!-- Flash messages -->
+    <div th:if="${error}"          class="alert alert-danger  animate-fade-in mb-6"><span class="alert-icon">⚠️</span><div class="alert-text" th:text="${error}"></div></div>
+    <div th:if="${successMessage}" class="alert alert-success animate-fade-in mb-6"><span class="alert-icon">✅</span><div class="alert-text" th:text="${successMessage}"></div></div>
 
-    <!-- Disruptions Table -->
+    <!-- Disruptions table -->
     <div class="card animate-fade-in-up">
       <div class="card__header">
         <div>
-          <div class="card__title">Disruption Events</div>
-          <div class="card__subtitle">All logged disruptions affecting active routes</div>
+          <div class="card__title">Active &amp; Historical Disruptions</div>
+          <div class="card__subtitle">All logged corridor disruption events — click any row to inspect impact</div>
+        </div>
+        <div class="flex gap-2">
+          <span class="badge badge-danger">HIGH = Immediate</span>
+          <span class="badge badge-warning">MEDIUM = Monitor</span>
+          <span class="badge badge-neutral">LOW = Info</span>
         </div>
       </div>
 
-      <!-- Empty state -->
       <div th:if="${disruptions.isEmpty()}" class="empty-state">
         <div class="empty-state__icon">✅</div>
-        <div class="empty-state__title">No Active Disruptions</div>
-        <div class="empty-state__desc">
-          All routes are operating normally. No disruptions have been logged at this time.
-        </div>
+        <div class="empty-state__title">No Disruptions Logged</div>
+        <div class="empty-state__desc">All freight corridors operating normally. Use the "Report New" button to log an incident.</div>
       </div>
 
-      <!-- Table -->
       <div th:unless="${disruptions.isEmpty()}" class="table-wrapper">
-        <table class="table disruptions-table" id="disruptions-table">
+        <table class="table">
           <thead>
             <tr>
-              <th>#</th>
+              <th>ID</th>
               <th>Type</th>
               <th>Affected Segment</th>
               <th>Description</th>
               <th>Severity</th>
-              <th>Action</th>
+              <th>Started</th>
+              <th>State</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr th:each="d, stat : ${disruptions}">
-              <td class="text-muted font-mono" th:text="${d.id}">1</td>
+            <tr th:each="d : ${disruptions}"
+                th:class="${'RESOLVED'.equals(d.status)} ? 'resolved' : (${#strings.equalsIgnoreCase(d.severity,'HIGH')} ? 'sev-high' : (${#strings.equalsIgnoreCase(d.severity,'MEDIUM')} ? 'sev-medium' : 'sev-low'))">
 
-              <!-- Type with icon -->
-              <td>
-                <span th:switch="${d.type}">
-                  <span th:case="'WEATHER'">🌧️</span>
-                  <span th:case="'PORT'">⚓</span>
-                  <span th:case="'ROAD'">🛣️</span>
-                  <span th:case="'STRIKE'">✊</span>
-                  <span th:case="*">⚡</span>
-                </span>
-                &nbsp;<span th:text="${d.type}">TYPE</span>
+              <td class="font-mono text-muted" th:text="${d.id}">1</td>
+
+              <td style="color:var(--text-primary);">
+                <span th:text="${d.type == 'WEATHER' ? '🌧️ ' : (d.type == 'PORT_STRIKE' ? '⚓ ' : (d.type == 'GEOPOLITICAL' ? '🏛️ ' : '⚡ '))}"></span>
+                <span th:text="${d.type}">—</span>
               </td>
 
-              <!-- Affected Segment -->
               <td>
-                <span class="font-mono" style="font-size:var(--text-xs); color:var(--text-secondary);"
-                      th:text="${d.affectedSegment}">—</span>
+                <span class="font-mono" style="font-size:var(--text-xs);color:var(--accent);" th:text="${d.affectedSegment}">—</span>
               </td>
 
-              <!-- Description truncated -->
-              <td>
-                <span class="truncate" th:text="${d.description}">—</span>
+              <td style="max-width:280px;">
+                <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-xs);"
+                      th:text="${d.description}">—</span>
               </td>
 
-              <!-- Severity badge -->
               <td>
-                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'HIGH')}"
-                      class="badge badge-danger">HIGH</span>
-                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'MEDIUM')}"
-                      class="badge badge-warning">MEDIUM</span>
-                <span th:if="${#strings.equalsIgnoreCase(d.severity, 'LOW')}"
-                      class="badge badge-neutral">LOW</span>
-                <!-- Fallback for any other value -->
-                <span th:if="${d.severity == null or (
-                                !#strings.equalsIgnoreCase(d.severity,'HIGH') and
-                                !#strings.equalsIgnoreCase(d.severity,'MEDIUM') and
-                                !#strings.equalsIgnoreCase(d.severity,'LOW'))}"
-                      class="badge badge-neutral" th:text="${d.severity}">—</span>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity,'HIGH')}"    class="badge badge-danger">HIGH</span>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity,'MEDIUM')}"  class="badge badge-warning">MEDIUM</span>
+                <span th:if="${#strings.equalsIgnoreCase(d.severity,'LOW')}"     class="badge badge-neutral">LOW</span>
               </td>
 
-              <!-- Action button -->
+              <td style="font-size:var(--text-xs);color:var(--text-muted);">
+                <span th:if="${d.startedAt != null}" th:text="${#temporals.format(d.startedAt,'dd MMM, HH:mm')}">—</span>
+                <span th:unless="${d.startedAt != null}">—</span>
+              </td>
+
               <td>
-                <a th:href="@{/disruptions/{id}/impact(id=${d.id})}"
-                   class="btn btn-primary btn-sm"
-                   th:id="'impact-btn-' + ${d.id}">
-                  🔍 Check Impact
-                </a>
+                <span th:if="${'ACTIVE'.equals(d.status)}"   class="badge badge-danger">● ACTIVE</span>
+                <span th:if="${'RESOLVED'.equals(d.status)}" class="badge badge-success">✓ RESOLVED</span>
+              </td>
+
+              <td>
+                <div class="flex gap-2">
+                  <a th:if="${'ACTIVE'.equals(d.status)}"
+                     th:href="@{/disruptions/{id}/impact(id=${d.id})}"
+                     class="btn btn-primary btn-sm">🔍 Impact</a>
+                  <form th:if="${'ACTIVE'.equals(d.status)}"
+                        th:action="@{/disruptions/{id}/resolve(id=${d.id})}" method="post" style="margin:0;">
+                    <button type="submit" class="btn btn-success btn-sm"
+                            onclick="return confirm('Mark disruption as resolved?')">✓ Resolve</button>
+                  </form>
+                  <span th:if="${'RESOLVED'.equals(d.status)}" class="text-muted" style="font-size:var(--text-xs);">Closed</span>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
-
         <div class="table-footer">
-          <span>
-            Showing <strong th:text="${disruptions.size()}">0</strong> disruption(s)
-          </span>
-          <span class="flex gap-2">
-            <span class="badge badge-danger">HIGH = immediate action</span>
-            <span class="badge badge-warning">MEDIUM = monitor</span>
-            <span class="badge badge-neutral">LOW = informational</span>
-          </span>
+          <span><strong th:text="${disruptions.size()}">0</strong> event(s) · <strong th:text="${activeCount}">0</strong> active</span>
+          <span style="color:var(--success);">● Auto-updated</span>
         </div>
       </div>
     </div>
@@ -132,5 +125,73 @@
   </div>
 </div>
 
+<!-- ── Create Disruption Modal ──────────────────────────────── -->
+<div class="modal-backdrop" id="create-disruption-modal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Report New Disruption</div>
+      <button class="modal-close" onclick="closeCreateModal()">✕</button>
+    </div>
+    <form th:action="@{/disruptions/create}" method="post" style="margin:0;">
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="form-label" for="disr-type">Disruption Type</label>
+          <select id="disr-type" name="type" class="form-select" required>
+            <option value="WEATHER">🌧️ Weather</option>
+            <option value="PORT_STRIKE">⚓ Port Strike</option>
+            <option value="GEOPOLITICAL">🏛️ Geopolitical</option>
+            <option value="ROAD">🛣️ Road Closure</option>
+            <option value="BREAKDOWN">🔧 Breakdown</option>
+            <option value="INSPECTION">🔍 Customs Inspection</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="form-label" for="disr-segment">Affected Segment / Node</label>
+          <select id="disr-segment" name="affectedSegment" class="form-select" required>
+            <option value="NH48">NH48 (Western Corridor)</option>
+            <option value="NH53">NH53 (East-West Corridor)</option>
+            <option value="NH44">NH44 (North-South Spine)</option>
+            <option value="NH66">NH66 (Coastal)</option>
+            <option value="MUMBAI_PORT">MUMBAI_PORT</option>
+            <option value="DELHI_HUB">DELHI_HUB</option>
+            <option value="NAGPUR_CROSSING">NAGPUR_CROSSING</option>
+            <option value="SURAT_HUB">SURAT_HUB</option>
+            <option value="KOLKATA_PORT">KOLKATA_PORT</option>
+            <option value="CHENNAI_PORT">CHENNAI_PORT</option>
+            <option value="BANGALORE_RING">BANGALORE_RING</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="form-label" for="disr-desc">Description</label>
+          <textarea id="disr-desc" name="description" class="form-textarea" placeholder="Describe the disruption in detail..." required></textarea>
+        </div>
+        <div class="modal-field">
+          <label class="form-label" for="disr-sev">Severity</label>
+          <select id="disr-sev" name="severity" class="form-select" required>
+            <option value="HIGH">🔴 HIGH — Immediate action required</option>
+            <option value="MEDIUM">🟠 MEDIUM — Monitor closely</option>
+            <option value="LOW">🔵 LOW — Informational</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeCreateModal()">Cancel</button>
+        <button type="submit" class="btn btn-warning btn-sm">⚡ Create Disruption Event</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<th:block th:if="${openCreateModal}">
+  <script>document.addEventListener('DOMContentLoaded', function() { openCreateModal(); });</script>
+</th:block>
+<script>
+  function openCreateModal()  { document.getElementById('create-disruption-modal').classList.add('is-open'); document.body.style.overflow='hidden'; }
+  function closeCreateModal() { document.getElementById('create-disruption-modal').classList.remove('is-open'); document.body.style.overflow=''; }
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'create-disruption-modal') { closeCreateModal(); }
+  });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeCreateModal(); });
+</script>
 </body>
 </html>

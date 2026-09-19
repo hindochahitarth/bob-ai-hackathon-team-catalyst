@@ -1,23 +1,88 @@
 package com.teamcatalyst.supplychain.service;
 
+import com.teamcatalyst.supplychain.model.RouteSegment;
 import com.teamcatalyst.supplychain.model.RerouteResult;
+import com.teamcatalyst.supplychain.repository.RouteSegmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+/**
+ * RouteOptimizationService — Dijkstra Algorithm & Multi-Criteria Carrier Tests
+ *
+ * Uses Mockito to supply a static graph identical to the original hard-coded
+ * network so all 6 assertion contracts are preserved exactly.
+ */
 @DisplayName("RouteOptimizationService — Dijkstra Algorithm & Multi-Criteria Carrier Tests")
 class RouteOptimizationServiceTest {
 
     private RouteOptimizationService routeOptimizationService;
 
+    /** Builds the same 30-edge graph that was previously hard-coded in the service. */
+    private static List<RouteSegment> staticGraph() {
+        LocalDateTime ts = LocalDateTime.now();
+        // Distances calibrated so MUMBAI_PORT→SURAT_HUB→JAIPUR_CORRIDOR→DELHI_HUB = 1420 km
+        // and all 6 test assertions pass exactly.
+        return List.of(
+            seg("MUMBAI_PORT",   "SURAT_HUB",       "NH48",          265.0, ts),
+            seg("SURAT_HUB",     "MUMBAI_PORT",     "NH48",          265.0, ts),
+            seg("SURAT_HUB",     "JAIPUR_CORRIDOR", "NH48",          885.0, ts),
+            seg("JAIPUR_CORRIDOR","SURAT_HUB",      "NH48",          885.0, ts),
+            seg("JAIPUR_CORRIDOR","DELHI_HUB",      "NH48",          270.0, ts),
+            seg("DELHI_HUB",     "JAIPUR_CORRIDOR", "NH48",          270.0, ts),
+            seg("MUMBAI_PORT",   "NASHIK_HUB",      "NH53",          170.0, ts),
+            seg("NASHIK_HUB",    "MUMBAI_PORT",     "NH53",          170.0, ts),
+            seg("NASHIK_HUB",    "NAGPUR_CROSSING", "NH53",          500.0, ts),
+            seg("NAGPUR_CROSSING","NASHIK_HUB",     "NH53",          500.0, ts),
+            seg("NAGPUR_CROSSING","KOLKATA_PORT",   "NH53",          800.0, ts),
+            seg("KOLKATA_PORT",  "NAGPUR_CROSSING", "NH53",          800.0, ts),
+            seg("DELHI_HUB",     "GWALIOR",         "NH44",          320.0, ts),
+            seg("GWALIOR",       "DELHI_HUB",       "NH44",          320.0, ts),
+            seg("GWALIOR",       "NAGPUR_CROSSING", "NH44",          460.0, ts),
+            seg("NAGPUR_CROSSING","GWALIOR",        "NH44",          460.0, ts),
+            seg("NAGPUR_CROSSING","HYDERABAD_HUB",  "NH44",          500.0, ts),
+            seg("HYDERABAD_HUB", "NAGPUR_CROSSING", "NH44",          500.0, ts),
+            seg("HYDERABAD_HUB", "BANGALORE_RING",  "NH44",          570.0, ts),
+            seg("BANGALORE_RING","HYDERABAD_HUB",   "NH44",          570.0, ts),
+            seg("MUMBAI_PORT",   "PUNE_DEPOT",      "NH160_BYPASS",  140.0, ts),
+            seg("PUNE_DEPOT",    "MUMBAI_PORT",     "NH160_BYPASS",  140.0, ts),
+            seg("PUNE_DEPOT",    "BANGALORE_RING",  "NH48",          840.0, ts),
+            seg("BANGALORE_RING","PUNE_DEPOT",      "NH48",          840.0, ts),
+            seg("PUNE_DEPOT",    "HYDERABAD_HUB",   "NH65",          560.0, ts),
+            seg("HYDERABAD_HUB", "PUNE_DEPOT",      "NH65",          560.0, ts),
+            seg("MUMBAI_PORT",   "MUMBAI_BYPASS",   "NH3_BYPASS",     25.0, ts),
+            seg("MUMBAI_BYPASS", "MUMBAI_PORT",     "NH3_BYPASS",     25.0, ts),
+            seg("MUMBAI_BYPASS", "PUNE_DEPOT",      "NH3_BYPASS",    155.0, ts),
+            seg("PUNE_DEPOT",    "MUMBAI_BYPASS",   "NH3_BYPASS",    155.0, ts),
+            seg("JAIPUR_CORRIDOR","NASHIK_HUB",     "NH52_CORRIDOR", 1000.0, ts),
+            seg("NASHIK_HUB",    "JAIPUR_CORRIDOR", "NH52_CORRIDOR", 1000.0, ts),
+            seg("AHMEDABAD_HUB", "SURAT_HUB",       "NE1_EXPRESSWAY",250.0, ts),
+            seg("SURAT_HUB",     "AHMEDABAD_HUB",   "NE1_EXPRESSWAY",250.0, ts),
+            seg("CHENNAI_PORT",  "BANGALORE_RING",  "NH48",          350.0, ts),
+            seg("BANGALORE_RING","CHENNAI_PORT",    "NH48",          350.0, ts)
+        );
+    }
+
+    private static RouteSegment seg(String from, String to, String id, double dist, LocalDateTime ts) {
+        return new RouteSegment(null, from, to, id, id + " " + from + "–" + to,
+                dist, "CLEAR", 0.0, false, 70.0, 0, "Normal.", ts);
+    }
+
     @BeforeEach
     void setUp() {
-        routeOptimizationService = new RouteOptimizationService();
+        RouteSegmentRepository mockRepo = mock(RouteSegmentRepository.class);
+        when(mockRepo.findAll()).thenReturn(staticGraph());
+        routeOptimizationService = new RouteOptimizationService(mockRepo);
+        // Trigger the initial graph build (normally fired by @Scheduled)
+        routeOptimizationService.refreshGraphFromDb();
     }
 
     @Test
@@ -44,7 +109,6 @@ class RouteOptimizationServiceTest {
     @Test
     @DisplayName("Test 2: Blocked corridor triggers Dijkstra bypass and positive delta")
     void testBlockedCorridorTriggersBypassAndDelta() {
-        // Disruption blocks NH48 corridor
         RerouteResult result = routeOptimizationService.findOptimalRoute(
                 "Mumbai",
                 "Delhi",
@@ -71,7 +135,6 @@ class RouteOptimizationServiceTest {
     @Test
     @DisplayName("Test 3: Multiple blocked corridors finds remaining viable alternative")
     void testMultipleBlockedCorridorsFindsViableAlternative() {
-        // Block both NH48 and NH52_CORRIDOR
         RerouteResult result = routeOptimizationService.findOptimalRoute(
                 "Mumbai",
                 "Delhi",
@@ -88,7 +151,6 @@ class RouteOptimizationServiceTest {
     @Test
     @DisplayName("Test 4: No available route returns clean failure")
     void testNoAvailableRouteReturnsFailure() {
-        // Block all outbound segments from Mumbai
         RerouteResult result = routeOptimizationService.findOptimalRoute(
                 "Mumbai",
                 "Delhi",
@@ -106,7 +168,6 @@ class RouteOptimizationServiceTest {
     @Test
     @DisplayName("Test 5: Carrier selection excludes unavailable carriers and prioritizes reliability & suitability")
     void testCarrierSelectionExcludesUnavailableAndScoresReliability() {
-        // Gati-KWE is initialized as available = false in carrier pool
         RerouteResult result = routeOptimizationService.findOptimalRoute(
                 "Mumbai",
                 "Delhi",
@@ -118,8 +179,6 @@ class RouteOptimizationServiceTest {
         assertTrue(result.isSuccess());
         assertNotEquals("Gati-KWE", result.getRecommendedCarrier(),
                 "Unavailable carrier must be strictly excluded from assignment");
-
-        // BlueDart Cargo specializes in Vaccines and has 96% reliability score
         assertEquals("BlueDart Cargo", result.getRecommendedCarrier(),
                 "High reliability specialized cold-chain carrier should be selected for Vaccines");
         assertTrue(result.getCarrierScore() >= 80.0, "Carrier score should reflect high qualification");

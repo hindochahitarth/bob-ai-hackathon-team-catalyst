@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>Dashboard — Supply Chain Assistant</title>
+  <title>Operations Dashboard — FreightOS</title>
 </head>
 <body>
-
-<!-- Navbar -->
 <nav th:replace="~{fragments/navbar :: navbar('dashboard')}"></nav>
 
 <div class="page-wrapper">
@@ -15,176 +13,342 @@
     <div class="page-header flex items-center justify-between">
       <div>
         <h1 class="page-title">Operations Dashboard</h1>
-        <p class="page-subtitle">Live supply chain overview — updated from database</p>
+        <p class="page-subtitle">
+          <span class="live-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:5px;vertical-align:middle;animation:pulse-live 1.2s ease-in-out infinite;"></span>
+          Live telemetry — auto-refreshing every 8 seconds
+        </p>
       </div>
       <div class="flex gap-2">
-        <a href="/ops-brief" class="btn btn-secondary btn-sm">⚡ AI Brief</a>
-        <a href="/track" class="btn btn-primary btn-sm">🔍 Track Shipment</a>
+        <a href="/ops-brief" class="btn btn-secondary btn-sm">✨ AI Brief</a>
+        <a href="/disruptions/create" id="new-disruption-btn" class="btn btn-warning btn-sm">⚡ Report Disruption</a>
+        <a href="/track" class="btn btn-primary btn-sm">🔍 Track</a>
       </div>
     </div>
 
-    <!-- Stat Cards -->
-    <div class="stat-grid stagger">
+    <!-- ── KPI Cards — values updated live via SSE ─────────────── -->
+    <div class="kpi-grid stagger">
 
-      <div class="stat-card stat-card--info">
-        <div class="stat-card__icon">📦</div>
-        <div class="stat-card__value" th:text="${totalShipments}">0</div>
-        <div class="stat-card__label">Active Shipments</div>
-        <span class="stat-card__delta stat-card__delta--up">Live database count</span>
-      </div>
-
-      <a href="/disruptions" style="text-decoration:none;" class="stat-card stat-card--warning">
-        <div class="stat-card__icon">⚠️</div>
-        <div class="stat-card__value" th:text="${totalDisruptions}">0</div>
-        <div class="stat-card__label">Active Disruptions</div>
-        <span class="stat-card__delta stat-card__delta--down">Logged incidents</span>
-      </a>
-
-      <a href="/fleet/idle" style="text-decoration:none;" class="stat-card stat-card--danger">
-        <div class="stat-card__icon">🚛</div>
-        <div class="stat-card__value" th:text="${idleFleetCount}">0</div>
-        <div class="stat-card__label">Idle Fleet Assets</div>
-        <span class="stat-card__delta stat-card__delta--up">Available for dispatch</span>
-      </a>
-
-      <a href="/coldchain" style="text-decoration:none;" class="stat-card stat-card--success">
-        <div class="stat-card__icon">❄️</div>
-        <div class="stat-card__value" th:text="${coldChainCount}">0</div>
-        <div class="stat-card__label">Cold Chain Shipments</div>
-        <span class="stat-card__delta stat-card__delta--up">Monitored sensors</span>
-      </a>
-
-    </div>
-
-    <!-- Recent Shipments Table -->
-    <div class="card mb-8">
-      <div class="card__header">
-        <div>
-          <div class="card__title">Recent Shipments</div>
-          <div class="card__subtitle">Latest active tracking entries in system</div>
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top">
+          <div class="kpi-icon">📦</div>
+          <span class="kpi-live-badge">LIVE</span>
         </div>
-        <a href="/shipments" class="btn btn-secondary btn-sm">View all →</a>
-      </div>
-
-      <div class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Tracking #</th>
-              <th>Cargo Type</th>
-              <th>Route</th>
-              <th>Cold Chain</th>
-              <th>Location</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr th:if="${recentShipments == null or recentShipments.isEmpty()}">
-              <td colspan="6" class="text-center text-muted">No shipments found in database</td>
-            </tr>
-            <tr th:each="s : ${recentShipments}">
-              <td class="font-mono">
-                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}"
-                   style="color:var(--accent); text-decoration:none; font-weight:600;"
-                   th:text="${s.trackingNumber}">TRK-00000</a>
-              </td>
-              <td th:text="${s.cargoType}">General Cargo</td>
-              <td>
-                <span th:if="${s.route != null}" th:text="${s.route.origin + ' → ' + s.route.destination}">Origin → Destination</span>
-                <span th:unless="${s.route != null}" class="text-muted">—</span>
-              </td>
-              <td>
-                <span th:if="${s.coldChain}" class="badge badge-info">❄️ Yes</span>
-                <span th:unless="${s.coldChain}" class="badge badge-neutral">No</span>
-              </td>
-              <td>
-                <span>📍 </span><span th:text="${s.currentLocation}">Unknown</span>
-              </td>
-              <td>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'IN_TRANSIT') or #strings.equalsIgnoreCase(s.status, 'In Transit')}" class="badge badge-success">In Transit</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'DELAYED') or #strings.equalsIgnoreCase(s.status, 'Delayed')}" class="badge badge-warning">Delayed</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'DELIVERED') or #strings.equalsIgnoreCase(s.status, 'Delivered')}" class="badge badge-accent">Delivered</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'CRITICAL') or #strings.equalsIgnoreCase(s.status, 'Critical')}" class="badge badge-live">Critical</span>
-                <span th:if="${s.status == null or (!#strings.equalsIgnoreCase(s.status,'IN_TRANSIT') and !#strings.equalsIgnoreCase(s.status,'In Transit') and !#strings.equalsIgnoreCase(s.status,'DELAYED') and !#strings.equalsIgnoreCase(s.status,'Delayed') and !#strings.equalsIgnoreCase(s.status,'DELIVERED') and !#strings.equalsIgnoreCase(s.status,'Delivered') and !#strings.equalsIgnoreCase(s.status,'CRITICAL') and !#strings.equalsIgnoreCase(s.status,'Critical'))}"
-                      class="badge badge-neutral" th:text="${s.status}">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="table-footer">
-          <span>Showing <strong th:text="${recentShipments != null ? recentShipments.size() : 0}">0</strong> of <strong th:text="${totalShipments}">0</strong> shipments</span>
-          <span>Database backed</span>
+        <div class="kpi-value" id="kpi-total" th:text="${totalShipments}">0</div>
+        <div class="kpi-label">Total Shipments</div>
+        <div class="kpi-delta kpi-delta--up">
+          <span id="kpi-transit" th:text="${totalShipments - delayedCount}">0</span> in transit
         </div>
       </div>
-    </div>
 
-    <!-- Bottom Row -->
-    <div class="grid grid-2 gap-6 mb-8">
-
-      <!-- Disruption Alerts -->
-      <div class="card">
-        <div class="card__header">
-          <div class="card__title">Disruption Alerts</div>
-          <a href="/disruptions" class="btn btn-secondary btn-sm">Details →</a>
-        </div>
-        <div class="flex flex-col gap-3">
-          <div th:if="${recentDisruptions == null or recentDisruptions.isEmpty()}" class="text-muted" style="font-size:var(--text-sm); padding:var(--sp-4);">
-            No active disruptions reported.
+      <a href="/disruptions" style="text-decoration:none;">
+        <div class="kpi-card kpi-card--warning">
+          <div class="kpi-top">
+            <div class="kpi-icon">⚠️</div>
+            <span class="kpi-live-badge">LIVE</span>
           </div>
-          <div th:each="d : ${recentDisruptions}"
-               th:class="'alert ' + (${#strings.equalsIgnoreCase(d.severity, 'HIGH')} ? 'alert-danger' : (${#strings.equalsIgnoreCase(d.severity, 'MEDIUM')} ? 'alert-warning' : 'alert-info'))">
-            <span class="alert-icon" th:text="${#strings.equalsIgnoreCase(d.severity, 'HIGH') ? '🔴' : (#strings.equalsIgnoreCase(d.severity, 'MEDIUM') ? '🟠' : '🔵')}"></span>
-            <div class="alert-text">
-              <div class="alert-title">
-                <span th:text="${d.type + ' — ' + d.affectedSegment}"></span>
-                &nbsp;<a th:href="@{/disruptions/{id}/impact(id=${d.id})}" style="font-size:var(--text-xs); color:inherit; text-decoration:underline;">Inspect Impact →</a>
-              </div>
-              <span th:text="${d.description}"></span>
-            </div>
+          <div class="kpi-value" id="kpi-disruptions" th:text="${totalDisruptions}">0</div>
+          <div class="kpi-label">Active Disruptions</div>
+          <div class="kpi-delta kpi-delta--warn">Click to manage →</div>
+        </div>
+      </a>
+
+      <a href="/fleet/idle" style="text-decoration:none;">
+        <div class="kpi-card kpi-card--success">
+          <div class="kpi-top">
+            <div class="kpi-icon">🚛</div>
+            <span class="kpi-live-badge">LIVE</span>
+          </div>
+          <div class="kpi-value" id="kpi-idle-fleet" th:text="${idleFleetCount}">0</div>
+          <div class="kpi-label">Idle Fleet Assets</div>
+          <div class="kpi-delta">
+            <span id="kpi-inuse-fleet" th:text="${inUseFleetCount}">0</span> in use
           </div>
         </div>
+      </a>
+
+      <a href="/coldchain" style="text-decoration:none;">
+        <div class="kpi-card" th:classappend="${majorBreaches > 0} ? 'kpi-card--danger' : 'kpi-card--info'">
+          <div class="kpi-top">
+            <div class="kpi-icon">❄️</div>
+            <span class="kpi-live-badge">LIVE</span>
+          </div>
+          <div class="kpi-value" id="kpi-coldchain" th:text="${coldChainCount}">0</div>
+          <div class="kpi-label">Cold Chain Monitored</div>
+          <div class="kpi-delta" th:classappend="${majorBreaches > 0} ? 'kpi-delta--down' : (${minorBreaches > 0} ? 'kpi-delta--warn' : 'kpi-delta--up')">
+            <span id="kpi-breaches" th:text="${majorBreaches + minorBreaches}">0</span> breaches active
+          </div>
+        </div>
+      </a>
+
+      <a href="/shipments" style="text-decoration:none;">
+        <div class="kpi-card kpi-card--danger">
+          <div class="kpi-top">
+            <div class="kpi-icon">🕒</div>
+            <span class="kpi-live-badge">LIVE</span>
+          </div>
+          <div class="kpi-value" id="kpi-delayed" th:text="${delayedCount}">0</div>
+          <div class="kpi-label">Delayed Shipments</div>
+          <div class="kpi-delta kpi-delta--down">Requiring attention</div>
+        </div>
+      </a>
+
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top">
+          <div class="kpi-icon">🌡️</div>
+          <span th:if="${majorBreaches > 0}" class="kpi-live-badge" style="background:var(--danger-dim);border-color:var(--danger);color:var(--danger);">ALERT</span>
+          <span th:unless="${majorBreaches > 0}" class="kpi-live-badge">LIVE</span>
+        </div>
+        <div class="kpi-value" id="kpi-major-breach" th:text="${majorBreaches}" th:style="${majorBreaches > 0} ? 'color:var(--danger)' : ''">0</div>
+        <div class="kpi-label">Major Temp Breaches</div>
+        <div class="kpi-delta" th:classappend="${majorBreaches > 0} ? 'kpi-delta--down' : 'kpi-delta--up'">
+          <span id="kpi-minor-breach" th:text="${minorBreaches}">0</span> minor breaches
+        </div>
       </div>
 
-      <!-- Fleet Status -->
-      <div class="card">
+    </div>
+
+    <!-- ── Main content — 2 column layout ──────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:var(--sp-6);margin-bottom:var(--sp-6);">
+
+      <!-- Live Shipment Table -->
+      <div class="card animate-fade-in-up">
         <div class="card__header">
-          <div class="card__title">Fleet Status Snapshot</div>
-          <a href="/fleet/idle" class="btn btn-secondary btn-sm">All assets →</a>
+          <div>
+            <div class="card__title">Live Shipment Tracker</div>
+            <div class="card__subtitle">Real-time status across all active consignments</div>
+          </div>
+          <a href="/shipments" class="btn btn-secondary btn-sm">View all →</a>
         </div>
         <div class="table-wrapper">
           <table class="table">
             <thead>
               <tr>
-                <th>Asset ID</th>
-                <th>Type</th>
+                <th>Tracking #</th>
+                <th>Cargo</th>
+                <th>Route</th>
+                <th>Cold Chain</th>
                 <th>Location</th>
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr th:if="${recentFleetAssets == null or recentFleetAssets.isEmpty()}">
-                <td colspan="4" class="text-muted text-center">No fleet assets registered</td>
+            <tbody id="shipments-tbody">
+              <tr th:if="${recentShipments == null or recentShipments.isEmpty()}">
+                <td colspan="6" class="text-center text-muted" style="padding:var(--sp-8);">No shipments found</td>
               </tr>
-              <tr th:each="asset : ${recentFleetAssets}">
-                <td class="font-mono" style="color:var(--accent);" th:text="${asset.identifier}">TRK-000</td>
-                <td th:text="${asset.assetType}">Truck</td>
+              <tr th:each="s : ${recentShipments}">
                 <td>
-                  <span>📍 </span><span th:text="${asset.currentLocation}">Location</span>
+                  <a th:href="@{/track(trackingNumber=${s.trackingNumber})}"
+                     class="font-mono" style="color:var(--accent);font-weight:600;"
+                     th:text="${s.trackingNumber}">TRK-00000</a>
+                </td>
+                <td style="color:var(--text-primary);" th:text="${s.cargoType}">—</td>
+                <td>
+                  <span th:if="${s.route != null}" style="font-size:var(--text-xs);color:var(--text-secondary);"
+                        th:text="${s.route.origin + ' → ' + s.route.destination}">—</span>
                 </td>
                 <td>
-                  <span th:if="${#strings.equalsIgnoreCase(asset.status, 'IDLE')}" class="badge badge-warning">Idle</span>
-                  <span th:if="${#strings.equalsIgnoreCase(asset.status, 'IN_USE') or #strings.equalsIgnoreCase(asset.status, 'ACTIVE')}" class="badge badge-success">In Use</span>
-                  <span th:if="${!#strings.equalsIgnoreCase(asset.status, 'IDLE') and !#strings.equalsIgnoreCase(asset.status, 'IN_USE') and !#strings.equalsIgnoreCase(asset.status, 'ACTIVE')}" class="badge badge-neutral" th:text="${asset.status}">Other</span>
+                  <span th:if="${s.coldChain}"  class="badge badge-accent">❄️ Cold</span>
+                  <span th:unless="${s.coldChain}" class="badge badge-neutral">—</span>
+                </td>
+                <td style="font-size:var(--text-xs);">📍 <span th:text="${s.currentLocation}">—</span></td>
+                <td>
+                  <span th:if="${s.status != null and #strings.startsWith(s.status,'IN_TRANSIT')}" class="badge badge-success">● In Transit</span>
+                  <span th:if="${#strings.equalsIgnoreCase(s.status,'DELAYED')}"                  class="badge badge-warning">⏱ Delayed</span>
+                  <span th:if="${#strings.equalsIgnoreCase(s.status,'DELIVERED')}"                class="badge badge-info">✓ Delivered</span>
+                  <span th:if="${s.status == null or (#strings.equalsIgnoreCase(s.status,'IN_TRANSIT (REROUTED)'))}" class="badge badge-accent">↗ Rerouted</span>
                 </td>
               </tr>
             </tbody>
           </table>
+          <div class="table-footer">
+            <span>Showing <strong th:text="${recentShipments != null ? recentShipments.size() : 0}">0</strong> of <strong id="footer-total" th:text="${totalShipments}">0</strong> shipments</span>
+            <span style="color:var(--success);font-size:var(--text-xs);">● Live</span>
+          </div>
         </div>
       </div>
 
+      <!-- Right column: Activity Feed + Disruptions -->
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
+
+        <!-- Live Activity Feed -->
+        <div class="card animate-fade-in-up" style="flex:1;">
+          <div class="card__header">
+            <div>
+              <div class="card__title">Live Activity</div>
+              <div class="card__subtitle">Real-time system events</div>
+            </div>
+            <div class="live-dot"></div>
+          </div>
+          <div class="activity-feed" id="activity-feed">
+            <div th:each="d : ${recentDisruptions}" class="activity-item">
+              <div class="activity-dot" th:classappend="${#strings.equalsIgnoreCase(d.severity,'HIGH')} ? 'danger' : 'warning'"></div>
+              <div>
+                <div class="activity-text"><strong th:text="${d.type}">EVENT</strong> on <strong th:text="${d.affectedSegment}">SEGMENT</strong></div>
+                <div class="activity-time" th:text="${d.startedAt != null ? #temporals.format(d.startedAt,'HH:mm') + ' — ' + d.severity : d.severity}">--:--</div>
+              </div>
+            </div>
+            <div th:if="${recentDisruptions == null or recentDisruptions.isEmpty()}" class="activity-item">
+              <div class="activity-dot success"></div>
+              <div class="activity-text">All corridors operating normally</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Disruptions card -->
+        <div class="card animate-fade-in-up">
+          <div class="card__header">
+            <div class="card__title">Active Disruptions</div>
+            <a href="/disruptions" class="btn btn-secondary btn-sm">Manage →</a>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-2);">
+            <div th:if="${recentDisruptions == null or recentDisruptions.isEmpty()}"
+                 style="font-size:var(--text-sm);color:var(--text-muted);padding:var(--sp-4);">
+              ✅ No active disruptions
+            </div>
+            <div th:each="d : ${recentDisruptions}"
+                 th:class="'alert ' + (${#strings.equalsIgnoreCase(d.severity,'HIGH')} ? 'alert-danger' : (${#strings.equalsIgnoreCase(d.severity,'MEDIUM')} ? 'alert-warning' : 'alert-info'))">
+              <span class="alert-icon" th:text="${#strings.equalsIgnoreCase(d.severity,'HIGH') ? '🔴' : (#strings.equalsIgnoreCase(d.severity,'MEDIUM') ? '🟠' : '🔵')}"></span>
+              <div class="alert-text">
+                <div class="alert-title" th:text="${d.type + ' — ' + d.affectedSegment}"></div>
+                <div style="font-size:var(--text-xs);">
+                  <a th:href="@{/disruptions/{id}/impact(id=${d.id})}" style="color:inherit;text-decoration:underline;font-weight:600;">Inspect →</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
+
+    <!-- Fleet Status -->
+    <div class="card animate-fade-in-up mb-8">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Fleet Status Overview</div>
+          <div class="card__subtitle">All registered assets with real-time utilisation</div>
+        </div>
+        <a href="/fleet/idle" class="btn btn-secondary btn-sm">All assets →</a>
+      </div>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr><th>Asset ID</th><th>Type</th><th>Location</th><th>Status</th><th>Utilisation</th></tr>
+          </thead>
+          <tbody>
+            <tr th:each="a : ${recentFleetAssets}">
+              <td class="font-mono" th:text="${a.identifier}">—</td>
+              <td style="color:var(--text-primary);">
+                <span th:text="${#strings.equalsIgnoreCase(a.assetType,'TRUCK') ? '🚛 ' : (#strings.equalsIgnoreCase(a.assetType,'VESSEL') ? '🚢 ' : '📦 ')}"></span>
+                <span th:text="${a.assetType}">—</span>
+              </td>
+              <td style="font-size:var(--text-xs);">📍 <span th:text="${a.currentLocation}">—</span></td>
+              <td>
+                <span th:if="${#strings.equalsIgnoreCase(a.status,'IDLE')}"   class="badge badge-warning">IDLE</span>
+                <span th:if="${#strings.equalsIgnoreCase(a.status,'IN_USE')}" class="badge badge-success">● IN USE</span>
+                <span th:if="${!#strings.equalsIgnoreCase(a.status,'IDLE') and !#strings.equalsIgnoreCase(a.status,'IN_USE')}" class="badge badge-neutral" th:text="${a.status}">—</span>
+              </td>
+              <td style="min-width:100px;">
+                <div class="util-bar">
+                  <div class="util-bar__fill" th:style="'width:' + (${#strings.equalsIgnoreCase(a.status,'IN_USE')} ? '100%' : '0%')"></div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SSE Live Update Engine
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  // SSE connection to live stats stream
+  var es = new EventSource('/api/v1/live-stream');
+
+  es.addEventListener('stats', function(e) {
+    try {
+      var data = JSON.parse(e.data);
+      updateKPI('kpi-total',         data.totalShipments);
+      updateKPI('kpi-disruptions',   data.activeDisruptions);
+      updateKPI('kpi-idle-fleet',    data.idleFleet);
+      updateKPI('kpi-coldchain',     data.coldChainCount);
+      updateKPI('kpi-delayed',       data.delayed);
+      updateKPI('kpi-major-breach',  data.majorBreaches);
+      updateKPI('kpi-minor-breach',  data.minorBreaches);
+      updateKPI('kpi-breaches',      data.majorBreaches + data.minorBreaches);
+      updateKPI('footer-total',      data.totalShipments);
+
+      // Push a new activity item
+      if (data.majorBreaches > 0) {
+        pushActivity('🚨 Major cold-chain breach detected — ' + data.majorBreaches + ' shipment(s)', 'danger');
+      } else if (data.activeDisruptions > 0) {
+        pushActivity('⚠ ' + data.activeDisruptions + ' active disruptions on network', 'warning');
+      } else {
+        pushActivity('✓ Network nominal — ' + data.inTransit + ' shipments in transit', 'success');
+      }
+
+      // Pulse the live badge green on successful update
+      var badge = document.getElementById('live-badge');
+      if (badge) {
+        badge.style.borderColor = 'rgba(74,222,128,0.5)';
+        badge.style.background  = 'rgba(74,222,128,0.1)';
+        setTimeout(function() {
+          badge.style.borderColor = '';
+          badge.style.background  = '';
+        }, 1000);
+      }
+    } catch(err) {}
+  });
+
+  es.onerror = function() {
+    var badge = document.getElementById('live-badge');
+    if (badge) {
+      badge.querySelector('.live-label').textContent = 'RECONNECTING';
+    }
+  };
+
+  function updateKPI(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var prev = parseInt(el.textContent, 10);
+    var next = parseInt(val, 10);
+    if (prev !== next) {
+      el.textContent = next;
+      el.classList.remove('updated');
+      void el.offsetWidth; // force reflow
+      el.classList.add('updated');
+    }
+  }
+
+  var activityCount = 0;
+  function pushActivity(msg, type) {
+    var feed = document.getElementById('activity-feed');
+    if (!feed) return;
+    var now = new Date();
+    var t = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    var item = document.createElement('div');
+    item.className = 'activity-item new';
+    item.innerHTML =
+      '<div class="activity-dot ' + type + '"></div>' +
+      '<div>' +
+        '<div class="activity-text">' + msg + '</div>' +
+        '<div class="activity-time">' + t + '</div>' +
+      '</div>';
+    feed.insertBefore(item, feed.firstChild);
+    // Keep max 12 items
+    while (feed.children.length > 12) {
+      feed.removeChild(feed.lastChild);
+    }
+  }
+
+  function pad(n) { return String(n).padStart(2,'0'); }
+})();
+</script>
 
 </body>
 </html>

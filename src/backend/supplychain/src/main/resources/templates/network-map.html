@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/navbar :: head}">
+  <title>Live Network Map — FreightOS</title>
+</head>
+<body>
+
+<nav th:replace="~{fragments/navbar :: navbar('network')}"></nav>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <!-- Page header -->
+    <div style="padding: var(--sp-6) 0 var(--sp-4); display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:var(--sp-3);">
+      <div>
+        <h1 style="font-size:var(--text-2xl); font-weight:700; color:var(--text-primary); margin:0 0 4px;">
+          Live Network Map
+        </h1>
+        <p class="text-muted" style="font-size:var(--text-sm); margin:0;">
+          Real-time congestion scores, incidents, and blockages across all freight corridors — refreshed every 10 s
+        </p>
+      </div>
+      <div style="display:flex; align-items:center; gap:var(--sp-2);">
+        <span class="badge badge-live" id="net-live-badge">
+          <span class="live-dot"></span> LIVE
+        </span>
+        <span class="text-muted font-mono" id="net-last-updated" style="font-size:var(--text-xs);">--:--:--</span>
+      </div>
+    </div>
+
+    <!-- ── KPI strip ───────────────────────────────────────────── -->
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:var(--sp-3); margin-bottom:var(--sp-6);">
+
+      <div class="card" style="padding:var(--sp-4); text-align:center;">
+        <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;">Total Segments</div>
+        <div id="kpi-total" style="font-size:var(--text-3xl); font-weight:800; color:var(--accent); font-family:var(--font-mono); margin:4px 0;"
+             th:text="${totalSegments}">—</div>
+        <div class="text-muted" style="font-size:10px;">graph edges</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-4); text-align:center;">
+        <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;">Blocked</div>
+        <div id="kpi-blocked" style="font-size:var(--text-3xl); font-weight:800; color:var(--danger); font-family:var(--font-mono); margin:4px 0;"
+             th:text="${blockedCount}">—</div>
+        <div class="text-muted" style="font-size:10px;">hard closures</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-4); text-align:center;">
+        <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;">Active Incidents</div>
+        <div id="kpi-incidents" style="font-size:var(--text-3xl); font-weight:800; color:var(--warning); font-family:var(--font-mono); margin:4px 0;"
+             th:text="${incidentCount}">—</div>
+        <div class="text-muted" style="font-size:10px;">non-CLEAR segments</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-4); text-align:center;">
+        <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;">High Congestion</div>
+        <div id="kpi-high" style="font-size:var(--text-3xl); font-weight:800; color:#f97316; font-family:var(--font-mono); margin:4px 0;"
+             th:text="${highCongestion}">—</div>
+        <div class="text-muted" style="font-size:10px;">score ≥ 60%</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-4); text-align:center;">
+        <div class="text-muted" style="font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.6px;">Network Health</div>
+        <div id="kpi-health" style="font-size:var(--text-3xl); font-weight:800; color:var(--success); font-family:var(--font-mono); margin:4px 0;">—%</div>
+        <div class="text-muted" style="font-size:10px;">avg congestion: <span id="kpi-avg-cong" th:text="${avgCongestion}">—</span>%</div>
+      </div>
+
+    </div>
+
+    <!-- ── Two-column layout: table + feed ────────────────────── -->
+    <div style="display:grid; grid-template-columns:1fr 340px; gap:var(--sp-5); align-items:start;">
+
+      <!-- Left: Segment table -->
+      <div class="card">
+        <div class="card__header">
+          <div>
+            <div class="card__title">Corridor Status Board</div>
+            <div class="card__subtitle">All segments ordered by congestion score — updates live</div>
+          </div>
+          <div style="display:flex; gap:var(--sp-2); align-items:center;">
+            <input type="text" id="seg-search" placeholder="Search corridor…"
+                   style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm);
+                          color:var(--text-primary); padding:6px 10px; font-size:var(--text-xs); width:180px;
+                          outline:none;"
+                   oninput="filterTable(this.value)" />
+          </div>
+        </div>
+
+        <div class="table-wrapper" style="max-height:600px; overflow-y:auto;">
+          <table class="table" id="seg-table">
+            <thead>
+              <tr>
+                <th>Corridor</th>
+                <th>Highway</th>
+                <th>Route</th>
+                <th>Dist.</th>
+                <th>Speed</th>
+                <th>Congestion</th>
+                <th>Status</th>
+                <th>Condition</th>
+              </tr>
+            </thead>
+            <tbody id="seg-tbody">
+              <tr th:each="seg : ${segments}"
+                  th:classappend="${seg.blocked} ? 'row-danger' : (${seg.congestionScore >= 0.7} ? 'row-warning' : '')">
+                <td>
+                  <div style="font-weight:600; font-size:var(--text-sm); color:var(--text-primary);"
+                       th:text="${seg.corridorName}">—</div>
+                  <div class="text-muted" style="font-size:10px; font-family:var(--font-mono);"
+                       th:text="'#' + ${seg.id}">—</div>
+                </td>
+                <td>
+                  <code class="font-mono" style="font-size:var(--text-xs); color:var(--accent); background:rgba(56,189,248,0.1);
+                               padding:2px 6px; border-radius:var(--radius-sm); border:1px solid rgba(56,189,248,0.2);"
+                        th:text="${seg.segmentId}">—</code>
+                </td>
+                <td style="font-size:var(--text-xs); font-family:var(--font-mono);">
+                  <span class="text-muted" th:text="${seg.fromNode}">—</span>
+                  <span style="color:var(--border);">→</span>
+                  <span class="text-muted" th:text="${seg.toNode}">—</span>
+                </td>
+                <td class="font-mono" style="font-size:var(--text-xs);" th:text="${seg.distanceKm} + ' km'">—</td>
+                <td class="font-mono" style="font-size:var(--text-xs);" th:text="${#numbers.formatDecimal(seg.speedKmh,1,0)} + ' km/h'">—</td>
+                <td style="min-width:120px;">
+                  <div style="display:flex; align-items:center; gap:var(--sp-2);">
+                    <div style="flex:1; height:6px; background:var(--bg-elevated); border-radius:3px; overflow:hidden;">
+                      <div th:style="'width:' + ${#numbers.formatDecimal(seg.congestionScore * 100,1,0)} + '%; height:100%; border-radius:3px; background:' +
+                           (${seg.congestionScore >= 0.7} ? '#ef4444' : (${seg.congestionScore >= 0.4} ? '#f59e0b' : '#22c55e')) + ';'">
+                      </div>
+                    </div>
+                    <span class="font-mono" style="font-size:10px; min-width:28px; text-align:right;"
+                          th:text="${#numbers.formatDecimal(seg.congestionScore * 100,1,0)} + '%'">—</span>
+                  </div>
+                </td>
+                <td>
+                  <span th:if="${seg.blocked}" class="badge badge-live" style="font-size:10px; padding:2px 6px;">🔴 BLOCKED</span>
+                  <span th:if="${!seg.blocked and seg.incidentType != 'CLEAR'}"
+                        th:text="${seg.incidentType}"
+                        class="badge badge-warning" style="font-size:10px; padding:2px 6px;"></span>
+                  <span th:if="${!seg.blocked and seg.incidentType == 'CLEAR'}"
+                        class="badge badge-success" style="font-size:10px; padding:2px 6px;">CLEAR</span>
+                </td>
+                <td style="font-size:11px; color:var(--text-secondary); max-width:200px; white-space:normal;"
+                    th:text="${seg.liveConditionDesc}">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span id="seg-count-label" th:text="${segments.size()} + ' segments total'">—</span>
+          <span class="text-muted">Dijkstra picks up congestion drift every 5 s</span>
+        </div>
+      </div>
+
+      <!-- Right: Activity feed + top congested -->
+      <div style="display:flex; flex-direction:column; gap:var(--sp-4);">
+
+        <!-- Top 5 congested -->
+        <div class="card">
+          <div class="card__header">
+            <div class="card__title" style="font-size:var(--text-sm);">🔥 Hotspot Segments</div>
+            <span class="badge badge-live" style="font-size:9px;">LIVE</span>
+          </div>
+          <div id="hotspot-list">
+            <div th:each="seg,it : ${topCongested}"
+                 style="display:flex; align-items:center; justify-content:space-between;
+                        padding:var(--sp-2) 0; border-bottom:1px solid var(--border);"
+                 th:style="${it.last} ? 'padding:var(--sp-2) 0; border-bottom:none;' : 'padding:var(--sp-2) 0; border-bottom:1px solid var(--border);'">
+              <div>
+                <div style="font-size:var(--text-xs); font-weight:600; color:var(--text-primary);"
+                     th:text="${seg.corridorName}">—</div>
+                <div class="text-muted font-mono" style="font-size:10px;"
+                     th:text="${seg.fromNode} + ' → ' + ${seg.toNode}">—</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="font-mono"
+                     th:style="'font-size:var(--text-xs); font-weight:700; color:' + (${seg.congestionScore >= 0.7} ? '#ef4444' : (${seg.congestionScore >= 0.4} ? '#f59e0b' : '#22c55e')) + ';'"
+                     th:text="${#numbers.formatDecimal(seg.congestionScore * 100,1,0)} + '%'">—</div>
+                <div style="font-size:9px;" class="text-muted" th:text="${seg.incidentType}">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live event feed -->
+        <div class="card" style="flex:1;">
+          <div class="card__header">
+            <div class="card__title" style="font-size:var(--text-sm);">⚡ Segment Event Feed</div>
+            <span class="badge badge-live" style="font-size:9px;">LIVE</span>
+          </div>
+          <div id="event-feed"
+               style="max-height:320px; overflow-y:auto; font-size:var(--text-xs); display:flex; flex-direction:column; gap:4px; padding:2px 0;">
+            <div class="text-muted" style="text-align:center; padding:var(--sp-4);">Awaiting segment events…</div>
+          </div>
+        </div>
+
+        <!-- Highway legend -->
+        <div class="card" style="padding:var(--sp-4);">
+          <div style="font-size:var(--text-xs); font-weight:700; color:var(--text-secondary);
+                      text-transform:uppercase; letter-spacing:.6px; margin-bottom:var(--sp-3);">
+            Congestion Legend
+          </div>
+          <div style="display:flex; flex-direction:column; gap:var(--sp-2);">
+            <div style="display:flex; align-items:center; gap:var(--sp-2);">
+              <div style="width:12px; height:12px; border-radius:2px; background:#22c55e;"></div>
+              <span class="text-muted" style="font-size:var(--text-xs);">Clear — score 0–39%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:var(--sp-2);">
+              <div style="width:12px; height:12px; border-radius:2px; background:#f59e0b;"></div>
+              <span class="text-muted" style="font-size:var(--text-xs);">Moderate — score 40–69%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:var(--sp-2);">
+              <div style="width:12px; height:12px; border-radius:2px; background:#ef4444;"></div>
+              <span class="text-muted" style="font-size:var(--text-xs);">Heavy — score 70–100%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:var(--sp-2);">
+              <div style="width:12px; height:12px; border-radius:2px; background:rgba(239,68,68,0.3); border:1px solid #ef4444;"></div>
+              <span class="text-muted" style="font-size:var(--text-xs);">Blocked — hard closure</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Live JS ──────────────────────────────────────────────────────────── -->
+<script>
+(function () {
+  'use strict';
+
+  var prevSegments = {};
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function nowStr() {
+    var d = new Date();
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function congColor(pct, blocked) {
+    if (blocked) return '#ef4444';
+    if (pct >= 70) return '#ef4444';
+    if (pct >= 40) return '#f59e0b';
+    return '#22c55e';
+  }
+
+  function feedItem(icon, msg, color) {
+    var el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+    el.innerHTML = '<span style="color:' + color + ';flex-shrink:0;">' + icon + '</span>' +
+                   '<span style="color:var(--text-secondary);">' + msg + '</span>';
+    return el;
+  }
+
+  function pushFeed(icon, msg, color) {
+    var feed = document.getElementById('event-feed');
+    var items = feed.querySelectorAll('div[style*="border-bottom"]');
+    if (feed.querySelector('.text-muted')) feed.innerHTML = '';
+    var item = feedItem(icon, msg, color);
+    feed.insertBefore(item, feed.firstChild);
+    // Keep max 30 items
+    while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+  }
+
+  function refreshNetwork() {
+    fetch('/api/v1/network/segments')
+      .then(function(r) { return r.json(); })
+      .then(function(segs) {
+        // Update KPIs
+        var blocked = segs.filter(function(s) { return s.blocked; }).length;
+        var incidents = segs.filter(function(s) { return s.incidentType !== 'CLEAR'; }).length;
+        var high = segs.filter(function(s) { return s.congestionScore >= 0.6; }).length;
+        var avgCong = segs.reduce(function(a,s) { return a + s.congestionScore; }, 0) / (segs.length || 1);
+        var health = Math.max(0, Math.min(100, Math.round(100 - blocked * 20 - incidents * 5 - avgCong * 30)));
+
+        setText('kpi-total',    segs.length);
+        setText('kpi-blocked',  blocked);
+        setText('kpi-incidents',incidents);
+        setText('kpi-high',     high);
+        setText('kpi-health',   health + '%');
+        setText('kpi-avg-cong', Math.round(avgCong * 100));
+        setText('net-last-updated', nowStr());
+
+        // Detect changes and push to feed
+        segs.forEach(function(seg) {
+          var prev = prevSegments[seg.id];
+          if (prev) {
+            if (!prev.blocked && seg.blocked) {
+              pushFeed('🔴', '[' + nowStr() + '] ' + seg.corridorName + ' — BLOCKED', '#ef4444');
+            } else if (prev.blocked && !seg.blocked) {
+              pushFeed('✅', '[' + nowStr() + '] ' + seg.corridorName + ' — Reopened', '#22c55e');
+            } else if (prev.incidentType === 'CLEAR' && seg.incidentType !== 'CLEAR') {
+              pushFeed('⚠️', '[' + nowStr() + '] ' + seg.corridorName + ' — ' + seg.incidentType + ' incident', '#f59e0b');
+            } else if (prev.incidentType !== 'CLEAR' && seg.incidentType === 'CLEAR') {
+              pushFeed('✅', '[' + nowStr() + '] ' + seg.corridorName + ' — Incident cleared', '#22c55e');
+            } else if (Math.abs(seg.congestionScore - prev.congestionScore) >= 0.15) {
+              var dir = seg.congestionScore > prev.congestionScore ? '▲' : '▼';
+              pushFeed(dir, '[' + nowStr() + '] ' + seg.corridorName + ' congestion ' +
+                       (seg.congestionScore > prev.congestionScore ? 'up' : 'down') + ' → ' +
+                       seg.congestionPct + '%', congColor(seg.congestionPct, false));
+            }
+          }
+          prevSegments[seg.id] = seg;
+        });
+
+        // Rebuild table rows
+        rebuildTable(segs);
+      })
+      .catch(function() {});
+  }
+
+  function rebuildTable(segs) {
+    var tbody = document.getElementById('seg-tbody');
+    if (!tbody) return;
+    var search = (document.getElementById('seg-search').value || '').toLowerCase();
+    var filtered = search ? segs.filter(function(s) {
+      return (s.corridorName || '').toLowerCase().includes(search) ||
+             (s.segmentId || '').toLowerCase().includes(search) ||
+             (s.fromNode || '').toLowerCase().includes(search) ||
+             (s.toNode || '').toLowerCase().includes(search);
+    }) : segs;
+
+    tbody.innerHTML = filtered.map(function(seg) {
+      var rowCls = seg.blocked ? 'row-danger' : seg.congestionScore >= 0.7 ? 'row-warning' : '';
+      var barColor = congColor(seg.congestionPct, seg.blocked);
+      var badgeHtml = seg.blocked
+        ? '<span class="badge badge-live" style="font-size:10px;padding:2px 6px;">🔴 BLOCKED</span>'
+        : seg.incidentType !== 'CLEAR'
+          ? '<span class="badge badge-warning" style="font-size:10px;padding:2px 6px;">' + seg.incidentType + '</span>'
+          : '<span class="badge badge-success" style="font-size:10px;padding:2px 6px;">CLEAR</span>';
+      return '<tr class="' + rowCls + '">' +
+        '<td><div style="font-weight:600;font-size:var(--text-sm);color:var(--text-primary);">' + (seg.corridorName || '') + '</div>' +
+            '<div class="text-muted font-mono" style="font-size:10px;">#' + seg.id + '</div></td>' +
+        '<td><code class="font-mono" style="font-size:var(--text-xs);color:var(--accent);background:rgba(56,189,248,0.1);padding:2px 6px;border-radius:var(--radius-sm);border:1px solid rgba(56,189,248,0.2);">' + (seg.segmentId || '') + '</code></td>' +
+        '<td style="font-size:var(--text-xs);font-family:var(--font-mono);"><span class="text-muted">' + seg.fromNode + '</span> <span style="color:var(--border);">→</span> <span class="text-muted">' + seg.toNode + '</span></td>' +
+        '<td class="font-mono" style="font-size:var(--text-xs);">' + seg.distanceKm + ' km</td>' +
+        '<td class="font-mono" style="font-size:var(--text-xs);">' + Math.round(seg.speedKmh) + ' km/h</td>' +
+        '<td style="min-width:120px;"><div style="display:flex;align-items:center;gap:var(--sp-2);">' +
+          '<div style="flex:1;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden;">' +
+            '<div style="width:' + seg.congestionPct + '%;height:100%;border-radius:3px;background:' + barColor + ';transition:width 0.6s;"></div>' +
+          '</div>' +
+          '<span class="font-mono" style="font-size:10px;min-width:28px;text-align:right;">' + seg.congestionPct + '%</span>' +
+        '</div></td>' +
+        '<td>' + badgeHtml + '</td>' +
+        '<td style="font-size:11px;color:var(--text-secondary);max-width:200px;white-space:normal;">' + (seg.liveConditionDesc || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var label = document.getElementById('seg-count-label');
+    if (label) label.textContent = filtered.length + ' segment' + (filtered.length !== 1 ? 's' : '') + (search ? ' (filtered)' : ' total');
+  }
+
+  function setText(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  window.filterTable = function(val) { rebuildTable(Object.values(prevSegments)); };
+
+  // Initial load + interval
+  refreshNetwork();
+  setInterval(refreshNetwork, 10000);
+
+})();
+</script>
+
+</body>
+</html>

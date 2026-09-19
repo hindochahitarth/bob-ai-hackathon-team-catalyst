@@ -1,181 +1,116 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 
-<!--
-  ╔══════════════════════════════════════════════════════════════╗
-  ║  Supply Chain Assistant — Shared <head> + Navbar fragment   ║
-  ║                                                              ║
-  ║  Usage in any page:                                          ║
-  ║    <head th:replace="~{fragments/navbar :: head}"></head>    ║
-  ║    <nav  th:replace="~{fragments/navbar :: navbar('dashboard')}"></nav>
-  ║                                                              ║
-  ║  activePage tokens:                                          ║
-  ║    'dashboard' | 'disruptions' | 'fleet' |                   ║
-  ║    'coldchain' | 'aiops'       | 'track'                     ║
-  ╚══════════════════════════════════════════════════════════════╝
--->
+<!-- ═══════════════════════════════════════════════════════════════
+     Supply Chain Assistant — Shared head + Navbar fragment
+     ═══════════════════════════════════════════════════════════════ -->
 
-<!-- ════════════════════════════════════════════════════════════
-     Fragment: head
-     Include in every page's <head> for consistent meta + CSS
-     ════════════════════════════════════════════════════════════ -->
+<!-- ── head fragment ──────────────────────────────────────────── -->
 <th:block th:fragment="head">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0f172a" />
-
-  <!-- Google Fonts — Inter for sharper, more professional look -->
+  <meta name="theme-color" content="#080e1a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet" />
-
-  <!-- Design system stylesheet -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" th:href="@{/css/style.css}" />
-
-  <!-- Inline override to use Inter from Google Fonts -->
-  <style>
-    :root {
-      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                     'Helvetica Neue', Arial, sans-serif;
-    }
-  </style>
 </th:block>
 
-
-<!-- ════════════════════════════════════════════════════════════
-     Fragment: navbar(activePage)
-     activePage — string token for the current section
-     ════════════════════════════════════════════════════════════ -->
+<!-- ── navbar fragment ────────────────────────────────────────── -->
 <nav class="navbar" th:fragment="navbar(activePage)" role="navigation" aria-label="Main navigation">
   <div class="navbar__inner">
 
-    <!-- ── Brand ────────────────────────────────────────────── -->
+    <!-- Brand -->
     <a href="/dashboard" class="navbar__brand" aria-label="Supply Chain Assistant home">
-      <!-- Inline SVG logo — shipping/logistics icon -->
       <div class="navbar__logo-icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-             xmlns="http://www.w3.org/2000/svg">
-          <path d="M1 3h15v13H1V3z" stroke="#fff" stroke-width="1.8"
-                stroke-linejoin="round"/>
-          <path d="M16 8h4l3 4v4h-7V8z" stroke="#fff" stroke-width="1.8"
-                stroke-linejoin="round"/>
-          <circle cx="5.5"  cy="18.5" r="2" stroke="#fff" stroke-width="1.8"/>
-          <circle cx="19.5" cy="18.5" r="2" stroke="#fff" stroke-width="1.8"/>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="4" width="15" height="11" rx="2" stroke="#fff" stroke-width="1.8"/>
+          <path d="M16 8h4l3 4v4h-7V8z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+          <circle cx="5.5"  cy="18" r="2.2" stroke="#fff" stroke-width="1.8"/>
+          <circle cx="19.5" cy="18" r="2.2" stroke="#fff" stroke-width="1.8"/>
         </svg>
       </div>
-      <span class="navbar__brand-text">
-        Supply Chain <span>Assistant</span>
-      </span>
+      <div class="navbar__brand-text">
+        <span class="brand-main">FreightOS</span>
+        <span class="brand-sub">Supply Chain Intelligence</span>
+      </div>
     </a>
 
-    <div class="navbar__divider" aria-hidden="true"></div>
+    <!-- Live status pill -->
+    <div class="navbar__live-badge" id="live-badge">
+      <span class="live-dot"></span>
+      <span class="live-label">LIVE</span>
+    </div>
 
-    <!-- ── Navigation links ─────────────────────────────────── -->
+    <!-- System clock -->
+    <div class="navbar__clock" id="sys-clock">--:--:--</div>
+
+    <!-- Nav links -->
     <ul class="navbar__nav" role="list">
-
-      <!-- Dashboard -->
       <li>
-        <a th:href="@{/dashboard}"
-           class="navbar__nav-link"
-           th:classappend="${activePage == 'dashboard'} ? 'active'"
-           aria-current="${activePage == 'dashboard'} ? 'page' : null">
-          <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-            <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-            <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-            <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-          <span class="nav-label">Dashboard</span>
+        <a th:href="@{/dashboard}" class="navbar__nav-link" th:classappend="${activePage == 'dashboard'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          Dashboard
         </a>
       </li>
-
-      <!-- Disruptions -->
       <li>
-        <a th:href="@{/disruptions}"
-           class="navbar__nav-link"
-           th:classappend="${activePage == 'disruptions'} ? 'active'"
-           aria-current="${activePage == 'disruptions'} ? 'page' : null">
-          <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                  stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="12" cy="17" r="0.5" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-          <span class="nav-label">Disruptions</span>
+        <a th:href="@{/disruptions}" class="navbar__nav-link" th:classappend="${activePage == 'disruptions'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="0.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          Disruptions
         </a>
       </li>
-
-      <!-- Idle Fleet -->
       <li>
-        <a th:href="@{/fleet/idle}"
-           class="navbar__nav-link"
-           th:classappend="${activePage == 'fleet'} ? 'active'"
-           aria-current="${activePage == 'fleet'} ? 'page' : null">
-          <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect x="1" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M16 8h4l3 4v4h-7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <circle cx="5.5"  cy="18.5" r="2" stroke="currentColor" stroke-width="1.8"/>
-            <circle cx="18.5" cy="18.5" r="2" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-          <span class="nav-label">Idle Fleet</span>
+        <a th:href="@{/shipments}" class="navbar__nav-link" th:classappend="${activePage == 'shipments'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="9 11 12 14 22 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 19h6M19 16v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Shipments
         </a>
       </li>
-
-      <!-- Cold Chain -->
       <li>
-        <a th:href="@{/coldchain}"
-           class="navbar__nav-link"
-           th:classappend="${activePage == 'coldchain'} ? 'active'"
-           aria-current="${activePage == 'coldchain'} ? 'page' : null">
-          <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"
-                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-          <span class="nav-label">Cold Chain</span>
+        <a th:href="@{/fleet/idle}" class="navbar__nav-link" th:classappend="${activePage == 'fleet'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><rect x="1" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 8h4l3 4v4h-7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="5.5" cy="18.5" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="18.5" cy="18.5" r="2" stroke="currentColor" stroke-width="1.8"/></svg>
+          Fleet
         </a>
       </li>
-
-      <!-- AI Ops Brief -->
       <li>
-        <a th:href="@{/ops-brief}"
-           class="navbar__nav-link"
-           th:classappend="${activePage == 'aiops'} ? 'active'"
-           aria-current="${activePage == 'aiops'} ? 'page' : null">
-          <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 2a5 5 0 015 5c0 3.5-5 11-5 11S7 10.5 7 7a5 5 0 015-5z"
-                  stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <path d="M9 21h6M7 19h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="12" cy="7" r="1.5" fill="currentColor"/>
-          </svg>
-          <span class="nav-label">AI Ops Brief</span>
+        <a th:href="@{/coldchain}" class="navbar__nav-link" th:classappend="${activePage == 'coldchain'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>
+          Cold Chain
         </a>
       </li>
-
-      <!-- Track Shipment — CTA style -->
       <li>
-        <a th:href="@{/track}"
-           class="navbar__nav-link btn btn-primary btn-sm"
-           th:classappend="${activePage == 'track'} ? 'active'"
-           style="margin-left: 4px;"
-           aria-current="${activePage == 'track'} ? 'page' : null">
-          <svg class="nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
-               xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
-            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <span class="nav-label">Track Shipment</span>
+        <a th:href="@{/network}" class="navbar__nav-link" th:classappend="${activePage == 'network'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="19" cy="5" r="2" stroke="currentColor" stroke-width="1.8"/><circle cx="19" cy="19" r="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 12h10M17 5.5L7 11M17 18.5L7 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Network
         </a>
       </li>
-
+      <li>
+        <a th:href="@{/ops-brief}" class="navbar__nav-link" th:classappend="${activePage == 'aiops'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r=".5" fill="currentColor" stroke="currentColor" stroke-width="1.5"/></svg>
+          AI Brief
+        </a>
+      </li>
+      <li>
+        <a th:href="@{/track}" class="navbar__nav-link navbar__nav-link--cta" th:classappend="${activePage == 'track'} ? ' active'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Track
+        </a>
+      </li>
     </ul>
   </div>
-</nav>
 
+  <!-- Clock script — updates every second -->
+  <script>
+    (function() {
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function tick() {
+        var d = new Date();
+        var s = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        var el = document.getElementById('sys-clock');
+        if (el) el.textContent = s;
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+</nav>
 </html>

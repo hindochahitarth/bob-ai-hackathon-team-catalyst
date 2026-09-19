@@ -17,18 +17,22 @@ public class FleetController {
 
     private final FleetAssetRepository fleetAssetRepository;
 
-    /** GET /fleet — redirect to idle list */
     @GetMapping
     public String fleet() {
         return "redirect:/fleet/idle";
     }
 
-    /** GET /fleet/idle — list all assets with status IDLE */
     @GetMapping("/idle")
     public String idleFleet(Model model) {
         List<FleetAsset> idleAssets = fleetAssetRepository.findByStatus("IDLE");
+        long idleCount   = fleetAssetRepository.countByStatus("IDLE");
+        long inUseCount  = fleetAssetRepository.countByStatus("IN_USE");
+        long totalCount  = fleetAssetRepository.count();
+
         model.addAttribute("idleAssets", idleAssets);
-        model.addAttribute("idleCount", idleAssets.size());
+        model.addAttribute("idleCount",  idleCount);
+        model.addAttribute("inUseCount", inUseCount);
+        model.addAttribute("totalCount", totalCount);
         return "fleet-idle";
     }
 }

@@ -1,83 +1,162 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head th:replace="~{fragments/navbar :: head}">
-  <title>All Shipments — Supply Chain Assistant</title>
+  <title>All Shipments — FreightOS</title>
 </head>
 <body>
-
-<nav th:replace="~{fragments/navbar :: navbar('track')}"></nav>
+<nav th:replace="~{fragments/navbar :: navbar('shipments')}"></nav>
 
 <div class="page-wrapper">
   <div class="container">
+
+    <!-- Header -->
     <div class="page-header flex items-center justify-between">
       <div>
-        <h1 class="page-title">All Shipments</h1>
-        <p class="page-subtitle">Complete overview of active and in-transit shipments across routes</p>
+        <h1 class="page-title">📦 All Shipments</h1>
+        <p class="page-subtitle">
+          <span class="live-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:5px;vertical-align:middle;animation:pulse-live 1.2s infinite;"></span>
+          Complete consignment register — live status across all freight corridors
+        </p>
       </div>
-      <div style="display:flex;gap:var(--sp-3);">
-        <a href="/track" class="btn btn-primary btn-sm">Track by Number →</a>
-        <a href="/dashboard" class="btn btn-secondary btn-sm">Dashboard</a>
+      <div class="flex gap-2">
+        <a href="/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+        <a href="/track" class="btn btn-primary btn-sm">🔍 Track</a>
       </div>
     </div>
 
+    <!-- KPI bar -->
+    <div class="kpi-grid stagger" style="grid-template-columns:repeat(5,1fr);">
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top"><div class="kpi-icon">📦</div><span class="kpi-live-badge">LIVE</span></div>
+        <div class="kpi-value" th:text="${totalShipments}">0</div>
+        <div class="kpi-label">Total</div>
+      </div>
+      <div class="kpi-card kpi-card--success">
+        <div class="kpi-top"><div class="kpi-icon">🚚</div></div>
+        <div class="kpi-value" th:text="${inTransitCount}">0</div>
+        <div class="kpi-label">In Transit</div>
+      </div>
+      <div class="kpi-card kpi-card--warning">
+        <div class="kpi-top"><div class="kpi-icon">⏱</div></div>
+        <div class="kpi-value" th:text="${delayedCount}">0</div>
+        <div class="kpi-label">Delayed</div>
+      </div>
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top"><div class="kpi-icon">✓</div></div>
+        <div class="kpi-value" th:text="${deliveredCount}">0</div>
+        <div class="kpi-label">Delivered</div>
+      </div>
+      <div class="kpi-card kpi-card--info">
+        <div class="kpi-top"><div class="kpi-icon">❄️</div></div>
+        <div class="kpi-value" th:text="${coldChainCount}">0</div>
+        <div class="kpi-label">Cold Chain</div>
+      </div>
+    </div>
+
+    <!-- Search bar -->
+    <div class="card mb-6 animate-fade-in-up" style="padding:var(--sp-4) var(--sp-6);">
+      <div style="display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;">
+        <input type="text" id="shipment-search" class="form-input" style="max-width:320px;"
+               placeholder="Filter by tracking number, cargo, location..." oninput="filterTable()"/>
+        <select id="status-filter" class="form-select" style="max-width:180px;" onchange="filterTable()">
+          <option value="">All Statuses</option>
+          <option value="IN_TRANSIT">In Transit</option>
+          <option value="DELAYED">Delayed</option>
+          <option value="DELIVERED">Delivered</option>
+        </select>
+        <span id="filter-count" class="text-muted" style="font-size:var(--text-xs);"></span>
+      </div>
+    </div>
+
+    <!-- Full shipments table -->
     <div class="card animate-fade-in-up">
+      <div class="card__header">
+        <div>
+          <div class="card__title">Complete Shipment Register</div>
+          <div class="card__subtitle">All consignments — live location and status data</div>
+        </div>
+        <span class="badge badge-accent" th:text="${totalShipments} + ' records'">0 records</span>
+      </div>
       <div class="table-wrapper">
-        <table class="table">
+        <table class="table" id="shipments-table">
           <thead>
             <tr>
               <th>Tracking #</th>
               <th>Cargo Type</th>
-              <th>Route</th>
+              <th>Origin → Destination</th>
+              <th>Carrier</th>
               <th>Cold Chain</th>
-              <th>Current Location</th>
+              <th>Distance</th>
+              <th>Location</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            <tr th:each="s : ${shipments}">
+            <tr th:if="${allShipments == null or allShipments.isEmpty()}">
+              <td colspan="9" style="text-align:center;padding:var(--sp-8);color:var(--text-muted);">No shipments found</td>
+            </tr>
+            <tr th:each="s : ${allShipments}">
               <td>
-                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}"
-                   th:text="${s.trackingNumber}"
-                   style="color:var(--accent);font-weight:600;font-family:var(--font-mono);text-decoration:none;">TRK-0000</a>
+                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}" class="font-mono" style="font-weight:600;"
+                   th:text="${s.trackingNumber}">—</a>
               </td>
-              <td th:text="${s.cargoType}">-</td>
-              <td>
-                <span th:if="${s.route != null}" th:text="${s.route.origin + ' → ' + s.route.destination}">-</span>
-                <span th:unless="${s.route != null}" style="color:var(--text-muted);">Unassigned</span>
+              <td style="color:var(--text-primary);" th:text="${s.cargoType}">—</td>
+              <td style="font-size:var(--text-xs);">
+                <span th:if="${s.route != null}" th:text="${s.route.origin + ' → ' + s.route.destination}">—</span>
               </td>
-              <td>
-                <span th:if="${s.coldChain}" class="badge badge-info">❄️ Monitored</span>
-                <span th:unless="${s.coldChain}" class="badge badge-neutral">Standard</span>
-              </td>
-              <td>
-                <span>📍 <span th:text="${s.currentLocation}">-</span></span>
+              <td style="font-size:var(--text-xs);">
+                <span th:if="${s.route != null}" th:text="${s.route.carrier}">—</span>
               </td>
               <td>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'In Transit') or #strings.equalsIgnoreCase(s.status, 'IN_TRANSIT')}"
-                      class="badge badge-success" th:text="${s.status}">In Transit</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Delayed') or #strings.equalsIgnoreCase(s.status, 'DELAYED')}"
-                      class="badge badge-warning" th:text="${s.status}">Delayed</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Critical') or #strings.equalsIgnoreCase(s.status, 'CRITICAL')}"
-                      class="badge badge-live" th:text="${s.status}">Critical</span>
-                <span th:if="${#strings.equalsIgnoreCase(s.status, 'Delivered') or #strings.equalsIgnoreCase(s.status, 'DELIVERED')}"
-                      class="badge badge-accent" th:text="${s.status}">Delivered</span>
-                <span th:if="${s.status == null or (!#strings.equalsIgnoreCase(s.status,'In Transit') and !#strings.equalsIgnoreCase(s.status,'IN_TRANSIT') and !#strings.equalsIgnoreCase(s.status,'Delayed') and !#strings.equalsIgnoreCase(s.status,'DELAYED') and !#strings.equalsIgnoreCase(s.status,'Critical') and !#strings.equalsIgnoreCase(s.status,'CRITICAL') and !#strings.equalsIgnoreCase(s.status,'Delivered') and !#strings.equalsIgnoreCase(s.status,'DELIVERED'))}"
-                      class="badge badge-neutral" th:text="${s.status}">-</span>
+                <span th:if="${s.coldChain}"  class="badge badge-accent">❄️ Yes</span>
+                <span th:unless="${s.coldChain}" class="badge badge-neutral">No</span>
+              </td>
+              <td style="font-size:var(--text-xs);color:var(--text-muted);">
+                <span th:if="${s.route != null}" th:text="${#numbers.formatDecimal(s.route.distanceKm,1,0) + ' km'}">—</span>
+              </td>
+              <td style="font-size:var(--text-xs);">📍 <span th:text="${s.currentLocation}">—</span></td>
+              <td>
+                <span th:if="${s.status != null and #strings.startsWith(s.status,'IN_TRANSIT')}" class="badge badge-success">● In Transit</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status,'DELAYED')}"                  class="badge badge-warning">⏱ Delayed</span>
+                <span th:if="${#strings.equalsIgnoreCase(s.status,'DELIVERED')}"                class="badge badge-info">✓ Delivered</span>
+                <span th:if="${s.status != null and #strings.containsIgnoreCase(s.status,'REROUTED')}" class="badge badge-accent">↗ Rerouted</span>
               </td>
               <td>
-                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}" class="btn btn-secondary btn-sm" style="padding:4px 10px;font-size:var(--text-xs);">Track</a>
+                <a th:href="@{/track(trackingNumber=${s.trackingNumber})}" class="btn btn-ghost btn-sm">Track →</a>
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
-      <div style="padding:var(--sp-4) var(--sp-6);font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
-        <span>Total shipments: <strong th:text="${#lists.size(shipments)}" style="color:var(--text-primary);">0</strong></span>
-        <span>Click any tracking number to see route journey & details</span>
+        <div class="table-footer">
+          <span>Showing <strong id="showing-count" th:text="${allShipments != null ? allShipments.size() : 0}">0</strong> of <strong th:text="${totalShipments}">0</strong></span>
+          <span style="color:var(--success);">● Live</span>
+        </div>
       </div>
     </div>
+
   </div>
 </div>
+
+<script>
+  function filterTable() {
+    var search = document.getElementById('shipment-search').value.toLowerCase();
+    var status = document.getElementById('status-filter').value.toLowerCase();
+    var rows = document.querySelectorAll('#shipments-table tbody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+      var text = row.textContent.toLowerCase();
+      var statusMatch = !status || text.includes(status.replace('_', ' ').toLowerCase());
+      var searchMatch = !search || text.includes(search);
+      var show = statusMatch && searchMatch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    var el = document.getElementById('showing-count');
+    if (el) el.textContent = visible;
+    var fc = document.getElementById('filter-count');
+    if (fc) fc.textContent = visible + ' results';
+  }
+</script>
 </body>
 </html>
