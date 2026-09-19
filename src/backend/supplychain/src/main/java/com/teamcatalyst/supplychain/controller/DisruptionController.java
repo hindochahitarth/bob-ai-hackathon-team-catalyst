@@ -31,16 +31,18 @@ public class DisruptionController {
     /** GET /disruptions — list all disruption events */
     @GetMapping
     public String list(Model model) {
-        List<DisruptionEvent> disruptions = disruptionService.findAll();
-        long activeCount = disruptions.stream().filter(d -> "ACTIVE".equals(d.getStatus())).count();
-        long resolvedCount = disruptions.stream().filter(d -> "RESOLVED".equals(d.getStatus())).count();
-        model.addAttribute("disruptions", disruptions);
-        model.addAttribute("totalCount", disruptions.size());
-        model.addAttribute("activeCount", activeCount);
+        // Use targeted DB queries instead of filtering in-memory
+        List<DisruptionEvent> disruptions = disruptionRepo.findAllOrderedByStartedAtDesc();
+        long activeCount   = disruptionRepo.countByStatus("ACTIVE");
+        long resolvedCount = disruptionRepo.countByStatus("RESOLVED");
+        long highCount     = disruptions.stream()
+                .filter(d -> "HIGH".equalsIgnoreCase(d.getSeverity()) && "ACTIVE".equals(d.getStatus()))
+                .count();
+        model.addAttribute("disruptions",   disruptions);
+        model.addAttribute("totalCount",    disruptions.size());
+        model.addAttribute("activeCount",   activeCount);
         model.addAttribute("resolvedCount", resolvedCount);
-        model.addAttribute("highCount",
-                disruptions.stream().filter(d -> "HIGH".equalsIgnoreCase(d.getSeverity())
-                        && "ACTIVE".equals(d.getStatus())).count());
+        model.addAttribute("highCount",     highCount);
         return "disruptions";
     }
 

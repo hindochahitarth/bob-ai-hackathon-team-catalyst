@@ -170,7 +170,7 @@
     .then(function(r) { return r.json(); })
     .then(function(d) {
       closeDispatchModal();
-      if (d.success) { location.reload(); }
+      if (d.success) { window.location.reload(); }
     })
     .catch(function() { btn.textContent = '🚀 Confirm Dispatch'; btn.disabled = false; });
   }

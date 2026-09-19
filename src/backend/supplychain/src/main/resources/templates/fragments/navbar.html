@@ -10,9 +10,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#080e1a" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <!-- Google Fonts loaded with display=swap + crossorigin for Railway CDN reliability.
+       The CSS font-stack in style.css uses system-ui as an instant fallback so the
+       page never renders unstyled while the font network request is in flight. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </noscript>
   <link rel="stylesheet" th:href="@{/css/style.css}" />
 </th:block>
 

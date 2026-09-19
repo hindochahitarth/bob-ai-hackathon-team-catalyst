@@ -166,7 +166,8 @@
           Analyses live shipments, disruptions, fleet, and cold-chain data via IBM watsonx.ai Granite.
         </div>
       </div>
-      <form method="post" th:action="@{/ops-brief}">
+      <form method="post" th:action="@{/ops-brief}"
+            onsubmit="(function(f){ var b=f.querySelector('button[type=submit]'); b.disabled=true; b.innerHTML='<span style=\'font-size:18px;\'>⏳</span> Generating…'; })(this)">
         <button type="submit"
                 id="generate-brief-btn"
                 class="btn btn-primary btn-generate"

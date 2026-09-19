@@ -1,0 +1,12 @@
+[build]
+# Nixpacks auto-detects Java + Maven. We tell it exactly which command to run.
+builder = "NIXPACKS"
+buildCommand = "chmod +x mvnw && ./mvnw package -DskipTests -q"
+
+[deploy]
+# Java 17, run the fat JAR. Railway injects $PORT; Spring reads it via server.port=${PORT:8080}
+startCommand = "java -Djava.security.egd=file:/dev/./urandom -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -jar target/supplychain-0.0.1-SNAPSHOT.jar"
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

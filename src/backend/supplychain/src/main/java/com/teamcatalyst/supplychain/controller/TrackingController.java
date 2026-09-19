@@ -51,7 +51,6 @@ public class TrackingController {
                 // Show Notify Owner button for any breach or delayed shipment
                 boolean showNotify = "Major Breach".equals(breachStatus)
                         || "Minor Breach".equals(breachStatus)
-                        || "Delayed".equalsIgnoreCase(shipment.getStatus())
                         || "DELAYED".equalsIgnoreCase(shipment.getStatus());
                 model.addAttribute("showNotify", showNotify);
             }
@@ -106,15 +105,20 @@ public class TrackingController {
     /** GET /shipments — full shipments list page with live KPI counts */
     @GetMapping({"/shipments", "/track/shipments"})
     public String allShipments(Model model) {
-        var all = shipmentRepo.findAll();
-        long inTransitCount  = all.stream().filter(s -> s.getStatus() != null && s.getStatus().startsWith("IN_TRANSIT")).count();
-        long delayedCount    = all.stream().filter(s -> "DELAYED".equalsIgnoreCase(s.getStatus())).count();
-        long deliveredCount  = all.stream().filter(s -> "DELIVERED".equalsIgnoreCase(s.getStatus())).count();
-        long coldChainCount  = all.stream().filter(com.teamcatalyst.supplychain.model.Shipment::isColdChain).count();
+        // Use DB-level aggregations rather than loading all rows and filtering in memory
+        long totalShipments  = shipmentRepo.count();
+        long delayedCount    = shipmentRepo.countByStatusIgnoreCase("DELAYED");
+        long deliveredCount  = shipmentRepo.countByStatusIgnoreCase("DELIVERED");
+        long coldChainCount  = shipmentRepo.countByColdChainTrue();
+        // IN_TRANSIT and IN_TRANSIT (REROUTED) both count as in-transit
+        long inTransitCount  = totalShipments - delayedCount - deliveredCount;
+
+        // Load shipments sorted newest-first for display
+        var all = shipmentRepo.findAllOrderedByIdDesc();
 
         model.addAttribute("allShipments",   all);
-        model.addAttribute("totalShipments", all.size());
-        model.addAttribute("inTransitCount", inTransitCount);
+        model.addAttribute("totalShipments", totalShipments);
+        model.addAttribute("inTransitCount", Math.max(0, inTransitCount));
         model.addAttribute("delayedCount",   delayedCount);
         model.addAttribute("deliveredCount", deliveredCount);
         model.addAttribute("coldChainCount", coldChainCount);

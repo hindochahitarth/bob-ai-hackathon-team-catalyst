@@ -182,7 +182,7 @@ public class WatsonxService {
                     .uri(ollamaUrl + "/api/tags")
                     .retrieve()
                     .bodyToMono(String.class)
-                    .block();
+                    .block(java.time.Duration.ofSeconds(3));   // hard 3-second timeout
             return true;
         } catch (Exception e) {
             return false;

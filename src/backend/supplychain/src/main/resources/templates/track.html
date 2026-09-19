@@ -44,7 +44,8 @@
     <!-- ── Search form ──────────────────────────────────────────── -->
     <div class="card animate-fade-in-up" style="margin-bottom: var(--sp-6);">
       <form method="get" action="/track"
-            style="display:flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap;">
+            style="display:flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap;"
+            onsubmit="this.querySelector('input[name=trackingNumber]').value = this.querySelector('input[name=trackingNumber]').value.trim().toUpperCase()">
         <div class="form-group" style="flex:1; min-width: 220px;">
           <label class="form-label" for="trackingNumber">Tracking Number</label>
           <input id="trackingNumber"
@@ -53,6 +54,7 @@
                  class="form-input"
                  placeholder="e.g. TRK-00421"
                  autocomplete="off"
+                 style="text-transform:uppercase;"
                  th:value="${trackingNumber}">
         </div>
         <button type="submit" class="btn btn-primary" style="height: 36px;">

@@ -139,23 +139,28 @@
 </div>
 
 <script>
+  var _filterTimer = null;
   function filterTable() {
-    var search = document.getElementById('shipment-search').value.toLowerCase();
-    var status = document.getElementById('status-filter').value.toLowerCase();
-    var rows = document.querySelectorAll('#shipments-table tbody tr');
-    var visible = 0;
-    rows.forEach(function(row) {
-      var text = row.textContent.toLowerCase();
-      var statusMatch = !status || text.includes(status.replace('_', ' ').toLowerCase());
-      var searchMatch = !search || text.includes(search);
-      var show = statusMatch && searchMatch;
-      row.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    var el = document.getElementById('showing-count');
-    if (el) el.textContent = visible;
-    var fc = document.getElementById('filter-count');
-    if (fc) fc.textContent = visible + ' results';
+    // Debounce — only run 200 ms after the last keystroke
+    clearTimeout(_filterTimer);
+    _filterTimer = setTimeout(function() {
+      var search = document.getElementById('shipment-search').value.toLowerCase();
+      var status = document.getElementById('status-filter').value.toLowerCase();
+      var rows = document.querySelectorAll('#shipments-table tbody tr');
+      var visible = 0;
+      rows.forEach(function(row) {
+        var text = row.textContent.toLowerCase();
+        var statusMatch = !status || text.includes(status.replace('_', ' ').toLowerCase());
+        var searchMatch = !search || text.includes(search);
+        var show = statusMatch && searchMatch;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      var el = document.getElementById('showing-count');
+      if (el) el.textContent = visible;
+      var fc = document.getElementById('filter-count');
+      if (fc) fc.textContent = visible + ' results';
+    }, 200);
   }
 </script>
 </body>
